@@ -9,4 +9,13 @@
 #define WIFI_SSID ""
 #define WIFI_PASSWORD ""
 
+// Board information
+#define BOARD_NAME ""
+#define FIRMWARE_VERSION ""
+
+// Secret Keys for encryption
+const byte ENCRYPTION_SECRET_KEY[] = {};
+
+const byte ENCRYPTION_SECRET_KEY_IV[N_BLOCK] = {};
+
 #endif // CONFIG_H
