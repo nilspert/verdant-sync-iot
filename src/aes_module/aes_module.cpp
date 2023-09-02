@@ -1,4 +1,3 @@
-#include <AESLib.h>
 #include "aes_module.h"
 #include "../../config/config.h"
 

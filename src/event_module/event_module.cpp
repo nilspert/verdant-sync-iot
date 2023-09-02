@@ -1,9 +1,9 @@
 #include "event_module.h"
+#include "../../config/config.h"
 #include "../wifi_module/wifi_module.h"
 #include "../time_module/time_module.h"
 #include "../firebase_module/firebase_module.h"
 #include "../aes_module/aes_module.h"
-#include "../../config/config.h"
 
 // Enqueue an event into the circular buffer
 bool EventModule::enqueueEvent(const Event &event) {

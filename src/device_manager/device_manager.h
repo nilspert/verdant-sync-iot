@@ -1,9 +1,7 @@
 #ifndef DEVICE_MANAGER_H
 #define DEVICE_MANAGER_H
 
-#include "../firebase_module/firebase_module.h"
-#include "../event_module/event_module.h"
-#include "../temperature_module/temperature_module.h"
+#include <ESP8266WiFi.h>
 
 class DeviceManager {
 public:
@@ -12,7 +10,9 @@ public:
 
 private:
     void initModules();
-    void registerDeviceForAuthorization();
+    void registerDeviceForAuthorization(String boardId);
+    int readSoilMoistureSensor();
+    void handleEvent(const char* severity, const char* message); 
 };
 
 #endif

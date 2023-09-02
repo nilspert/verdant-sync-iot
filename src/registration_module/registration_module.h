@@ -2,12 +2,11 @@
 #define REGISTRATION_MODULE_H
 
 #include <ESP8266WiFi.h>
-#include "../event_module/event_module.h"
 
 class RegistrationModule {
 public:
-    void encryptAndSendDeviceRegistration(const String& boardId, EventModule eventModule);
-    void encryptAndSendBoardInfo(const String& boardId, EventModule eventModule);
+    bool encryptAndSendDeviceRegistration(const String& boardId);
+    bool encryptAndSendBoardInfo(const String& boardId);
 };
 
 #endif
