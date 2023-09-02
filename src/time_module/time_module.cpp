@@ -39,20 +39,10 @@ String getFormattedDate() {
     int day = timeElements.Day;
     int hour = timeElements.Hour;
 
-    // Print the year, month, day, and hour
-    Serial.print("Year: ");
-    Serial.println(year);
-    Serial.print("Month: ");
-    Serial.println(month);
-    Serial.print("Day: ");
-    Serial.println(day);
-    Serial.print("Hour: ");
-    Serial.println(hour);
-
     // Format the date as YYYY/MM/DD
     String formattedDate = String(year) + "/" + (month < 10 ? "0" : "") + String(month) + "/" + (day < 10 ? "0" : "") + String(day) + "/";
 
-    Serial.println("formattedDate");
+    Serial.println("Date:");
     Serial.println(formattedDate);
     
     return formattedDate;

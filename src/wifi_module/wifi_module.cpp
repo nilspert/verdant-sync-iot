@@ -1,5 +1,3 @@
-#include <ESP8266WiFi.h>
-#include <AESLib.h>
 #include "wifi_module.h"
 #include "../../config/config.h"
 
