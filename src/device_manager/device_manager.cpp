@@ -11,9 +11,11 @@
 
 // Constants and Configuration Settings
 const int SERIAL_BAUD_RATE = 115200;
-const int LOOP_DELAY = 30000;
-const int MOISTURE_SENSOR_PIN = A0;              // Analog pin for moisture sensor readings
-const int DIGITAL_MOISTURE_SENSOR_PIN = 10;       // Digital pin for moisture sensor power
+const int LOOP_DELAY = 10000;
+const int WATERING_SEQUENCE = 2000;
+const int MOISTURE_SENSOR_PIN = A0;             // Analog pin for moisture sensor readings
+const int DIGITAL_MOISTURE_SENSOR_PIN = 10;     // Digital pin for moisture sensor power
+const int DIGITAL_WATER_PUMP_PIN = 16;           // Digital pin for water pump power
 const int SOIL_WET = 500;
 const int SOIL_DRY = 750;
 
@@ -42,11 +44,15 @@ TemperatureModule temperatureModule;
 SoilMoistureModule soilMoistureModule;
 
 unsigned long previousMillis = 0;
+unsigned long waterPumpActivatedMillis = 0;
+bool waterPumpActivated = false;
 
 void DeviceManager::setup() {
     Serial.begin(SERIAL_BAUD_RATE);
-    pinMode(DIGITAL_MOISTURE_SENSOR_PIN, OUTPUT); // Set the digital pin as an input
+    pinMode(DIGITAL_MOISTURE_SENSOR_PIN, OUTPUT); // Set the digital pin as an output
+    pinMode(DIGITAL_WATER_PUMP_PIN, OUTPUT); // Set the digital pin as an output
     digitalWrite(DIGITAL_MOISTURE_SENSOR_PIN, LOW); // Initially keep the sensor OFF
+    digitalWrite(DIGITAL_WATER_PUMP_PIN, LOW);
     initModules();
     String boardId = getBoardId();
     if (!isDeviceAddedToFirebase(boardId)) {
@@ -86,6 +92,10 @@ int DeviceManager::readSoilMoistureSensor() {
     return val; // Return analog moisture value
 }
 
+void DeviceManager::activateWaterPump(bool activate) {
+    digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
+}
+
 void DeviceManager::loop() {
     unsigned long currentMillis = millis();
     String boardId = getBoardId();
@@ -116,9 +126,18 @@ void DeviceManager::loop() {
             Serial.println("Status: Soil moisture is perfect");
         } else {
             Serial.println("Status: Soil is too dry - time to water!");
+            activateWaterPump(true);
+            waterPumpActivatedMillis = currentMillis;
+            waterPumpActivated = true;
         }
 
         previousMillis = currentMillis; // Reset the timer
+    }
+
+    if (waterPumpActivated && (currentMillis - waterPumpActivatedMillis >= WATERING_SEQUENCE)) {
+        Serial.println("Stop!");
+        waterPumpActivated = false;
+        activateWaterPump(false);
     }
 
     eventModule.loop();

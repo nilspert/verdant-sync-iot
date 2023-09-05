@@ -13,6 +13,7 @@ private:
     void registerDeviceForAuthorization(String boardId);
     int readSoilMoistureSensor();
     void handleEvent(const char* severity, const char* message); 
+    void activateWaterPump(bool activate);
 };
 
 #endif
