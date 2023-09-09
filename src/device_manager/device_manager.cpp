@@ -4,10 +4,8 @@
 #include "../time_module/time_module.h"
 #include "../aes_module/aes_module.h"
 #include "../firebase_module/firebase_module.h"
-#include "../registration_module/registration_module.h"
+#include "../api_manager/api_manager.h"
 #include "../event_module/event_module.h"
-#include "../temperature_module/temperature_module.h"
-#include "../soil_moisture_module/soil_moisture_module.h"
 
 // Constants and Configuration Settings
 const int SERIAL_BAUD_RATE = 115200;
@@ -16,6 +14,9 @@ const int WATERING_SEQUENCE = 2000;
 const int MOISTURE_SENSOR_PIN = A0;             // Analog pin for moisture sensor readings
 const int DIGITAL_MOISTURE_SENSOR_PIN = 10;     // Digital pin for moisture sensor power
 const int DIGITAL_WATER_PUMP_PIN = 16;           // Digital pin for water pump power
+const int DIGITAL_BMP280_PIN = 2;
+const int I2C_D1 = 5;
+const int I2C_D2 = 4;
 const int SOIL_WET = 500;
 const int SOIL_DRY = 750;
 
@@ -38,10 +39,9 @@ const char* SEND_TEMPERATURE_ERROR_MESSAGE = "Failed to send temperature data.";
 const char* SEND_SOIL_MOISTURE_SUCCESS_MESSAGE = "Soil moisture data sent successfully.";
 const char* SEND_SOIL_MOISTURE_ERROR_MESSAGE = "Failed to send soil moisture data.";
 
-RegistrationModule registrationModule;
+ApiManager apiManager;
 EventModule eventModule;
-TemperatureModule temperatureModule;
-SoilMoistureModule soilMoistureModule;
+Adafruit_BMP280 bmp;
 
 unsigned long previousMillis = 0;
 unsigned long waterPumpActivatedMillis = 0;
@@ -49,10 +49,14 @@ bool waterPumpActivated = false;
 
 void DeviceManager::setup() {
     Serial.begin(SERIAL_BAUD_RATE);
+    Wire.begin(I2C_D2, I2C_D1);
+    bmp.begin(0x76);
     pinMode(DIGITAL_MOISTURE_SENSOR_PIN, OUTPUT); // Set the digital pin as an output
     pinMode(DIGITAL_WATER_PUMP_PIN, OUTPUT); // Set the digital pin as an output
+    pinMode(DIGITAL_BMP280_PIN, OUTPUT); // Set the digital pin as an output. 
     digitalWrite(DIGITAL_MOISTURE_SENSOR_PIN, LOW); // Initially keep the sensor OFF
     digitalWrite(DIGITAL_WATER_PUMP_PIN, LOW);
+    digitalWrite(DIGITAL_BMP280_PIN, HIGH); // Selects BMP280 I2C interface.
     initModules();
     String boardId = getBoardId();
     if (!isDeviceAddedToFirebase(boardId)) {
@@ -72,14 +76,20 @@ void DeviceManager::handleEvent(const char* severity, const char* message) {
 }
 
 void DeviceManager::registerDeviceForAuthorization(String boardId) {
-    if (registrationModule.encryptAndSendDeviceRegistration(boardId)) {
+    String networkName = getNetworkName();
+    String localIp = getLocalIpAsString();
+    if (apiManager.encryptAndSendDeviceRegistration(boardId, networkName)) {
+        Serial.println("Device successfully registered.");
         handleEvent(INFO, ADD_AUTHORIZED_DEVICE_SUCCESS_MESSAGE);
-        if(registrationModule.encryptAndSendBoardInfo(boardId)) {
+        if(apiManager.encryptAndSendBoardInfo(boardId, networkName, localIp)) {
+            Serial.println("Board info data sent successfully.");
             handleEvent(INFO, ADD_BOARD_INFO_SUCCESS_MESSAGE);
         } else {
+            Serial.println("Failed to send board info data.");
             handleEvent(ERROR, ADD_BOARD_INFO_ERROR_MESSAGE);
         }
     } else {
+        Serial.println("Failed to register device.");
         handleEvent(ERROR, ADD_AUTHORIZED_DEVICE_ERROR_MESSAGE);
     }
 }
@@ -104,18 +114,25 @@ void DeviceManager::loop() {
         Serial.println("Looping away...");
 
         // Read temperature
-        float temperature = random(0, 100) + random(0, 99) / 100.0;
-        if (temperatureModule.encryptAndSendTemperature(temperature, boardId)) {
+        float temperature = bmp.readTemperature();
+        Serial.print("Temperature: ");
+        Serial.print(temperature);
+        Serial.println(" *C");
+        if (apiManager.encryptAndSendTemperature(temperature, boardId)) {
+            Serial.println("Temperature data sent successfully.");
             handleEvent(INFO, SEND_TEMPERATURE_SUCCESS_MESSAGE);
         } else {
+            Serial.println("Failed to send temperature data.");
             handleEvent(ERROR, SEND_TEMPERATURE_ERROR_MESSAGE);
         }
         
         // Read soil moisture
         int soilMoisture = readSoilMoistureSensor();
-        if (soilMoistureModule.encryptAndSendSoilMoisture(soilMoisture, boardId)) {
+        if (apiManager.encryptAndSendSoilMoisture(soilMoisture, boardId)) {
+            Serial.println("Soil moisture data sent successfully.");
             handleEvent(INFO, SEND_SOIL_MOISTURE_SUCCESS_MESSAGE);
         } else {
+            Serial.println("Failed to send soil moisture data.");
             handleEvent(ERROR, SEND_SOIL_MOISTURE_ERROR_MESSAGE);
         }
 

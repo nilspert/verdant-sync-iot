@@ -19,7 +19,6 @@ void aesModuleInit() {
 }
 
 void encryptAndConvertToHex(const char* data, char* encryptedData, byte iv[]) {
-    Serial.println("Encrypting and converting to hex string...");
     uint16_t dataLength = strlen(data);
     int cipherLength = aesLib.encrypt((byte*)data, dataLength, (byte*)ciphertext, aes_key, sizeof(aes_key), iv);
     
