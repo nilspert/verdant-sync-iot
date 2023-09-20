@@ -20,7 +20,8 @@ public:
     void loop();
     void createAndEnqueueEvent(const String& timestamp, const String& hostname, 
                                const String& severity, const String& facility, 
-                               const String& message, const String& ssid);
+                               const String& message, const String& ssid,
+                               const String& eventType);
 
 private:
     Event eventBuffer[MAX_EVENTS];
@@ -31,8 +32,9 @@ private:
     bool enqueueEvent(const Event &event);
     bool dequeueEvent(Event &event);
     Event createEvent(const String& timestamp, const String& hostname, const String& severity,
-                      const String& facility, const String& message, const String& ssid);
-    String generateMessageId();
+                      const String& facility, const String& message, const String& ssid,
+                      const String& eventType);
+    String generateMessageId(const String& eventType);
     void sendEventToFirebase(const Event &event);
     void gatherAndEcryptEventInformation(const Event &event, char* encryptedHostname,
                                          char* encryptedSeverity, char* encryptedFacility,

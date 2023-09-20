@@ -9,12 +9,12 @@
 
 // Constants and Configuration Settings
 const int SERIAL_BAUD_RATE = 115200;
-const int LOOP_DELAY = 10000;
+const int LOOP_DELAY = 30000;
 const int WATERING_SEQUENCE = 2000;
 const int MOISTURE_SENSOR_PIN = A0;             // Analog pin for moisture sensor readings
 const int DIGITAL_MOISTURE_SENSOR_PIN = 10;     // Digital pin for moisture sensor power
 const int DIGITAL_WATER_PUMP_PIN = 16;           // Digital pin for water pump power
-const int DIGITAL_BMP280_PIN = 2;
+const int DIGITAL_DHT22_PIN = 2;
 const int I2C_D1 = 5;
 const int I2C_D2 = 4;
 const int SOIL_WET = 500;
@@ -26,6 +26,14 @@ const char* WARNING = "WARNING";
 const char* ERROR = "ERROR";
 const char* DEVICE = "DEVICE";
 
+// Event types
+const char* REGISTRATION = "0x0";
+const char* BOARD_INFO = "0x1";
+const char* TEMPERATURE = "0x2";
+const char* HUMIDITY = "0x3";
+const char* AIR_PRESSURE = "0x4";
+const char* SOIL_MOISTURE = "0x5";
+
 const char* ADD_BOARD_INFO_SUCCESS_MESSAGE = "Board information added successfully.";
 const char* ADD_BOARD_INFO_ERROR_MESSAGE = "Failed to add board information.";
 
@@ -36,12 +44,19 @@ const char* ADD_AUTHORIZED_DEVICE_ERROR_MESSAGE = "Failed to add device to autho
 const char* SEND_TEMPERATURE_SUCCESS_MESSAGE = "Temperature data sent successfully.";
 const char* SEND_TEMPERATURE_ERROR_MESSAGE = "Failed to send temperature data.";
 
+const char* SEND_HUMIDITY_SUCCESS_MESSAGE = "Humidity data sent successfully.";
+const char* SEND_HUMIDITY_ERROR_MESSAGE = "Failed to send humidity data.";
+
+const char* SEND_AIR_PRESSURE_SUCCESS_MESSAGE = "Air pressure data sent successfully.";
+const char* SEND_AIR_PRESSURE_ERROR_MESSAGE = "Failed to send air pressure data.";
+
 const char* SEND_SOIL_MOISTURE_SUCCESS_MESSAGE = "Soil moisture data sent successfully.";
 const char* SEND_SOIL_MOISTURE_ERROR_MESSAGE = "Failed to send soil moisture data.";
 
 ApiManager apiManager;
 EventModule eventModule;
 Adafruit_BMP280 bmp;
+DHT dht(DIGITAL_DHT22_PIN, DHT_TYPE);
 
 unsigned long previousMillis = 0;
 unsigned long waterPumpActivatedMillis = 0;
@@ -51,12 +66,11 @@ void DeviceManager::setup() {
     Serial.begin(SERIAL_BAUD_RATE);
     Wire.begin(I2C_D2, I2C_D1);
     bmp.begin(0x76);
+    dht.begin();
     pinMode(DIGITAL_MOISTURE_SENSOR_PIN, OUTPUT); // Set the digital pin as an output
     pinMode(DIGITAL_WATER_PUMP_PIN, OUTPUT); // Set the digital pin as an output
-    pinMode(DIGITAL_BMP280_PIN, OUTPUT); // Set the digital pin as an output. 
     digitalWrite(DIGITAL_MOISTURE_SENSOR_PIN, LOW); // Initially keep the sensor OFF
     digitalWrite(DIGITAL_WATER_PUMP_PIN, LOW);
-    digitalWrite(DIGITAL_BMP280_PIN, HIGH); // Selects BMP280 I2C interface.
     initModules();
     String boardId = getBoardId();
     if (!isDeviceAddedToFirebase(boardId)) {
@@ -71,8 +85,8 @@ void DeviceManager::initModules() {
     firebaseModuleInit();
 }
 
-void DeviceManager::handleEvent(const char* severity, const char* message) {
-    eventModule.createAndEnqueueEvent(getCurrentTimeAsString(), BOARD_NAME, severity, DEVICE, message, getNetworkName());
+void DeviceManager::handleEvent(const char* severity, const char* message, const char* eventType) {
+    eventModule.createAndEnqueueEvent(getCurrentTimeAsString(), BOARD_NAME, severity, DEVICE, message, getNetworkName(), eventType);
 }
 
 void DeviceManager::registerDeviceForAuthorization(String boardId) {
@@ -80,17 +94,17 @@ void DeviceManager::registerDeviceForAuthorization(String boardId) {
     String localIp = getLocalIpAsString();
     if (apiManager.encryptAndSendDeviceRegistration(boardId, networkName)) {
         Serial.println("Device successfully registered.");
-        handleEvent(INFO, ADD_AUTHORIZED_DEVICE_SUCCESS_MESSAGE);
+        handleEvent(INFO, ADD_AUTHORIZED_DEVICE_SUCCESS_MESSAGE, REGISTRATION);
         if(apiManager.encryptAndSendBoardInfo(boardId, networkName, localIp)) {
             Serial.println("Board info data sent successfully.");
-            handleEvent(INFO, ADD_BOARD_INFO_SUCCESS_MESSAGE);
+            handleEvent(INFO, ADD_BOARD_INFO_SUCCESS_MESSAGE, BOARD_INFO);
         } else {
             Serial.println("Failed to send board info data.");
-            handleEvent(ERROR, ADD_BOARD_INFO_ERROR_MESSAGE);
+            handleEvent(ERROR, ADD_BOARD_INFO_ERROR_MESSAGE, BOARD_INFO);
         }
     } else {
         Serial.println("Failed to register device.");
-        handleEvent(ERROR, ADD_AUTHORIZED_DEVICE_ERROR_MESSAGE);
+        handleEvent(ERROR, ADD_AUTHORIZED_DEVICE_ERROR_MESSAGE, REGISTRATION);
     }
 }
 
@@ -114,26 +128,52 @@ void DeviceManager::loop() {
         Serial.println("Looping away...");
 
         // Read temperature
-        float temperature = bmp.readTemperature();
+        float temperature = dht.readTemperature();
         Serial.print("Temperature: ");
         Serial.print(temperature);
         Serial.println(" *C");
         if (apiManager.encryptAndSendTemperature(temperature, boardId)) {
             Serial.println("Temperature data sent successfully.");
-            handleEvent(INFO, SEND_TEMPERATURE_SUCCESS_MESSAGE);
+            handleEvent(INFO, SEND_TEMPERATURE_SUCCESS_MESSAGE, TEMPERATURE);
         } else {
             Serial.println("Failed to send temperature data.");
-            handleEvent(ERROR, SEND_TEMPERATURE_ERROR_MESSAGE);
+            handleEvent(ERROR, SEND_TEMPERATURE_ERROR_MESSAGE, TEMPERATURE);
+        }
+
+        // Read humidity
+        float humidity = dht.readHumidity();
+        Serial.print("Humidity: ");
+        Serial.print(humidity);
+        Serial.println(" %");
+        if (apiManager.encryptAndSendHumidity(humidity, boardId)) {
+            Serial.println("Humidity data sent successfully.");
+            handleEvent(INFO, SEND_HUMIDITY_SUCCESS_MESSAGE, HUMIDITY);
+        } else {
+            Serial.println("Failed to send humidity data.");
+            handleEvent(ERROR, SEND_HUMIDITY_ERROR_MESSAGE, HUMIDITY);
+        }
+
+        // Read air pressure
+        float airPressure = bmp.readPressure() / 100.0F; // Convert to hPa
+        Serial.print("Air pressure: ");
+        Serial.print(airPressure);
+        Serial.println(" hPa");
+        if (apiManager.encryptAndSendAirPressure(airPressure, boardId)) {
+            Serial.println("Air pressure data sent successfully.");
+            handleEvent(INFO, SEND_AIR_PRESSURE_SUCCESS_MESSAGE, AIR_PRESSURE);
+        } else {
+            Serial.println("Failed to send air pressure data.");
+            handleEvent(ERROR, SEND_AIR_PRESSURE_ERROR_MESSAGE, AIR_PRESSURE);
         }
         
         // Read soil moisture
         int soilMoisture = readSoilMoistureSensor();
         if (apiManager.encryptAndSendSoilMoisture(soilMoisture, boardId)) {
             Serial.println("Soil moisture data sent successfully.");
-            handleEvent(INFO, SEND_SOIL_MOISTURE_SUCCESS_MESSAGE);
+            handleEvent(INFO, SEND_SOIL_MOISTURE_SUCCESS_MESSAGE, SOIL_MOISTURE);
         } else {
             Serial.println("Failed to send soil moisture data.");
-            handleEvent(ERROR, SEND_SOIL_MOISTURE_ERROR_MESSAGE);
+            handleEvent(ERROR, SEND_SOIL_MOISTURE_ERROR_MESSAGE, SOIL_MOISTURE);
         }
 
         // Determine soil status

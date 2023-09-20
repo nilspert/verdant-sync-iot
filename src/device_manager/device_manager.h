@@ -5,6 +5,9 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
+#include <DHT.h>
+
+#define DHT_TYPE DHT22
 
 class DeviceManager {
 public:
@@ -15,7 +18,7 @@ private:
     void initModules();
     void registerDeviceForAuthorization(String boardId);
     int readSoilMoistureSensor();
-    void handleEvent(const char* severity, const char* message); 
+    void handleEvent(const char* severity, const char* message, const char* eventType); 
     void activateWaterPump(bool activate);
 };
 

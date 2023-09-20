@@ -69,6 +69,38 @@ bool ApiManager::encryptAndSendTemperature(float temperature, const String& boar
     return handleApiCall(json, nodePath);
 }
 
+bool ApiManager::encryptAndSendHumidity(float humidity, const String& boardId) {
+    char encryptedHumidity[INPUT_BUFFER_LIMIT] = {0};
+    char buffer[20];
+    dtostrf(humidity, 6, 2, buffer);
+
+    byte temp_enc_iv[N_BLOCK];
+    generateNewIV(temp_enc_iv, enc_ivs[15]);
+    encryptAndConvertToHex(buffer, encryptedHumidity, temp_enc_iv);
+
+    FirebaseJson json;
+    json.set("humidity", encryptedHumidity);
+
+    String nodePath = "boards/" + boardId;
+    return handleApiCall(json, nodePath);
+}
+
+bool ApiManager::encryptAndSendAirPressure(float airPressure, const String& boardId) {
+    char encryptedAirPressure[INPUT_BUFFER_LIMIT] = {0};
+    char buffer[20];
+    dtostrf(airPressure, 6, 2, buffer);
+
+    byte temp_enc_iv[N_BLOCK];
+    generateNewIV(temp_enc_iv, enc_ivs[16]);
+    encryptAndConvertToHex(buffer, encryptedAirPressure, temp_enc_iv);
+
+    FirebaseJson json;
+    json.set("air_pressure", encryptedAirPressure);
+
+    String nodePath = "boards/" + boardId;
+    return handleApiCall(json, nodePath);
+}
+
 bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& boardId) {
     // Convert the moistureLevel integer to a string
     String moistureStr = String(soilMoisture);

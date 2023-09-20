@@ -33,9 +33,10 @@ void EventModule::createAndEnqueueEvent(
     const String& severity, 
     const String& facility, 
     const String& message, 
-    const String& ssid
+    const String& ssid,
+    const String& eventType
 ) {
-    Event event = createEvent(timestamp, hostname, severity, facility, message, ssid);
+    Event event = createEvent(timestamp, hostname, severity, facility, message, ssid, eventType);
     if (enqueueEvent(event)) {
         Serial.println("Event enqueued successfully.");
     } else {
@@ -49,7 +50,8 @@ Event EventModule::createEvent(
   const String& severity, 
   const String& facility, 
   const String& message, 
-  const String& ssid
+  const String& ssid,
+  const String& eventType
   ) {
     Event event;
     event.timestamp = timestamp;
@@ -57,19 +59,19 @@ Event EventModule::createEvent(
     event.severity = severity;
     event.facility = facility;
     event.message = message;
-    event.messageId = generateMessageId();
+    event.messageId = generateMessageId(eventType);
     event.ssid = ssid;
     return event;
 }
 
-String EventModule::generateMessageId() {
-    String messageId = getBoardId() + ":" + getCurrentTimeAsString();
+String EventModule::generateMessageId(const String& eventType) {
+    String messageId = getBoardId() + ":" + getCurrentTimeAsString() + ":" + eventType;
     return messageId;
 }
 
 void EventModule::sendEventToFirebase(const Event &event) {
     // Generate a UUID string
-    String messageId = generateMessageId();
+    // String messageId = generateMessageId();
     
     // Gather and encrypt event information
     char encryptedHostname[INPUT_BUFFER_LIMIT] = {0};
@@ -91,13 +93,13 @@ void EventModule::sendEventToFirebase(const Event &event) {
     FirebaseJson json;
 
     // Add data to the JSON object using identifiers
-    json.set(messageId + "/timestamp", event.timestamp);
-    json.set(messageId + "/hostname", encryptedHostname);
-    json.set(messageId + "/severity", encryptedSeverity);
-    json.set(messageId + "/facility", encryptedFacility);
-    json.set(messageId + "/message", encryptedMessage);
-    json.set(messageId + "/messageId", messageId.c_str());
-    json.set(messageId + "/ssid", encryptedWifiSSID);
+    json.set(event.messageId + "/timestamp", event.timestamp);
+    json.set(event.messageId + "/hostname", encryptedHostname);
+    json.set(event.messageId + "/severity", encryptedSeverity);
+    json.set(event.messageId + "/facility", encryptedFacility);
+    json.set(event.messageId + "/message", encryptedMessage);
+    json.set(event.messageId + "/messageId", event.messageId.c_str());
+    json.set(event.messageId + "/ssid", encryptedWifiSSID);
 
     String encryptedWifiSSIDString(encryptedWifiSSID); 
     String nodePath = "events/" + event.severity + "/" + getFormattedDate() + encryptedWifiSSIDString + "/";
