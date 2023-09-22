@@ -12,6 +12,7 @@ public:
     bool encryptAndSendHumidity(float humidity, const String& boardId);
     bool encryptAndSendAirPressure(float airPressure, const String& boardId);
     bool encryptAndSendSoilMoisture(int soilMoisture, const String& boardId);
+    bool encryptAndSendLuminosity(float luminosity, const String& boardId);
 private: 
     bool handleApiCall(FirebaseJson json, const String& nodePath);
 };

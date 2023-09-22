@@ -18,6 +18,7 @@ private:
     void initModules();
     void registerDeviceForAuthorization(String boardId);
     int readSoilMoistureSensor();
+    int readPhotoresistor();
     void handleEvent(const char* severity, const char* message, const char* eventType); 
     void activateWaterPump(bool activate);
 };

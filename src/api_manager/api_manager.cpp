@@ -101,6 +101,22 @@ bool ApiManager::encryptAndSendAirPressure(float airPressure, const String& boar
     return handleApiCall(json, nodePath);
 }
 
+bool ApiManager::encryptAndSendLuminosity(float luminosity, const String& boardId) {
+    char encryptedLuminosity[INPUT_BUFFER_LIMIT] = {0};
+    char buffer[20];
+    dtostrf(luminosity, 6, 2, buffer);
+
+    byte temp_enc_iv[N_BLOCK];
+    generateNewIV(temp_enc_iv, enc_ivs[17]);
+    encryptAndConvertToHex(buffer, encryptedLuminosity, temp_enc_iv);
+
+    FirebaseJson json;
+    json.set("luminosity", encryptedLuminosity);
+
+    String nodePath = "boards/" + boardId;
+    return handleApiCall(json, nodePath);
+}
+
 bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& boardId) {
     // Convert the moistureLevel integer to a string
     String moistureStr = String(soilMoisture);
