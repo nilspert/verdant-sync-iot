@@ -123,12 +123,13 @@ int DeviceManager::readPhotoresistor() {
 }
 
 void DeviceManager::activateWaterPump(bool activate) {
-    digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
+    // digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
 }
 
 void DeviceManager::loop() {
     unsigned long currentMillis = millis();
     String boardId = getBoardId();
+    String networkName = getNetworkName();
 
     if ((currentMillis - previousMillis >= LOOP_DELAY) && isDeviceAuthorized(boardId)) {        
         Serial.println("Looping away...");
@@ -138,7 +139,7 @@ void DeviceManager::loop() {
         Serial.print("Temperature: ");
         Serial.print(temperature);
         Serial.println(" *C");
-        if (apiManager.encryptAndSendTemperature(temperature, boardId)) {
+        if (apiManager.encryptAndSendTemperature(temperature, boardId, networkName)) {
             Serial.println("Temperature data sent successfully.");
         } else {
             Serial.println("Failed to send temperature data.");
@@ -150,7 +151,7 @@ void DeviceManager::loop() {
         Serial.print("Humidity: ");
         Serial.print(humidity);
         Serial.println(" %");
-        if (apiManager.encryptAndSendHumidity(humidity, boardId)) {
+        if (apiManager.encryptAndSendHumidity(humidity, boardId, networkName)) {
             Serial.println("Humidity data sent successfully.");
         } else {
             Serial.println("Failed to send humidity data.");
@@ -162,7 +163,7 @@ void DeviceManager::loop() {
         Serial.print("Air pressure: ");
         Serial.print(airPressure);
         Serial.println(" hPa");
-        if (apiManager.encryptAndSendAirPressure(airPressure, boardId)) {
+        if (apiManager.encryptAndSendAirPressure(airPressure, boardId, networkName)) {
             Serial.println("Air pressure data sent successfully.");
         } else {
             Serial.println("Failed to send air pressure data.");
@@ -174,7 +175,7 @@ void DeviceManager::loop() {
         Serial.print("Soil moisture: ");
         Serial.print(soilMoisture);
         Serial.println(" %");
-        if (apiManager.encryptAndSendSoilMoisture(soilMoisture, boardId)) {
+        if (apiManager.encryptAndSendSoilMoisture(soilMoisture, boardId, networkName)) {
             Serial.println("Soil moisture data sent successfully.");
         } else {
             Serial.println("Failed to send soil moisture data.");
@@ -185,7 +186,7 @@ void DeviceManager::loop() {
         Serial.print("Luminosity: ");
         Serial.print(luminosity);
         Serial.println(" %");
-        if (apiManager.encryptAndSendLuminosity(luminosity, boardId)) {
+        if (apiManager.encryptAndSendLuminosity(luminosity, boardId, networkName)) {
             Serial.println("Luminosity data sent successfully.");
         } else {
             Serial.println("Failed to send luminosity data.");

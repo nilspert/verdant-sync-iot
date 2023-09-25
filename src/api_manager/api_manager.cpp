@@ -2,6 +2,29 @@
 #include "../../config/config.h"
 #include "../aes_module/aes_module.h"
 
+// API node path keys
+const char* AIR_PRESSURE_KEY = "air_pressure";
+const char* HUMIDITY_KEY = "humidity";
+const char* LUMINOSITY_KEY = "luminosity";
+const char* SOIL_MOISTURE_KEY = "soil_moisture";
+const char* TEMPERATURE_KEY = "temperature";
+
+bool ApiManager::setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey) {
+    char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0};
+    byte temp_enc_iv[N_BLOCK]; 
+    generateNewIV(temp_enc_iv, enc_ivs[18]);
+    encryptAndConvertToHex(networkName.c_str(), encryptedWifiSSID, temp_enc_iv);
+    String encryptedWifiSSIDString(encryptedWifiSSID); 
+
+    String nodePath = "boards/" + boardId;
+    if (handleApiCall(json, nodePath)) {
+        String historyNodePath = "history/" + nodePathKey + "/" + getFormattedDate() + encryptedWifiSSIDString + "/" + boardId + "/" + getCurrentTimeAsString();
+        return handleApiCall(json, historyNodePath);
+    } else {
+        return false;
+    }
+}
+
 bool ApiManager::handleApiCall(FirebaseJson json, const String& nodePath) {
     if (sendFirebaseData(json, nodePath.c_str())) {
         return true;
@@ -53,7 +76,7 @@ bool ApiManager::encryptAndSendBoardInfo(const String& boardId, const String& ne
     return handleApiCall(json, nodePath);
 }
 
-bool ApiManager::encryptAndSendTemperature(float temperature, const String& boardId) {
+bool ApiManager::encryptAndSendTemperature(float temperature, const String& boardId, const String& networkName) {
     char encryptedTemperature[INPUT_BUFFER_LIMIT] = {0};
     char buffer[20];
     dtostrf(temperature, 6, 2, buffer);
@@ -63,13 +86,11 @@ bool ApiManager::encryptAndSendTemperature(float temperature, const String& boar
     encryptAndConvertToHex(buffer, encryptedTemperature, temp_enc_iv);
 
     FirebaseJson json;
-    json.set("temperature", encryptedTemperature);
-
-    String nodePath = "boards/" + boardId;
-    return handleApiCall(json, nodePath);
+    json.set(TEMPERATURE_KEY, encryptedTemperature);
+    return setupApiCallWithHistoryData(boardId, networkName, json, TEMPERATURE_KEY);
 }
 
-bool ApiManager::encryptAndSendHumidity(float humidity, const String& boardId) {
+bool ApiManager::encryptAndSendHumidity(float humidity, const String& boardId, const String& networkName) {
     char encryptedHumidity[INPUT_BUFFER_LIMIT] = {0};
     char buffer[20];
     dtostrf(humidity, 6, 2, buffer);
@@ -79,13 +100,11 @@ bool ApiManager::encryptAndSendHumidity(float humidity, const String& boardId) {
     encryptAndConvertToHex(buffer, encryptedHumidity, temp_enc_iv);
 
     FirebaseJson json;
-    json.set("humidity", encryptedHumidity);
-
-    String nodePath = "boards/" + boardId;
-    return handleApiCall(json, nodePath);
+    json.set(HUMIDITY_KEY, encryptedHumidity);
+    return setupApiCallWithHistoryData(boardId, networkName, json, HUMIDITY_KEY);
 }
 
-bool ApiManager::encryptAndSendAirPressure(float airPressure, const String& boardId) {
+bool ApiManager::encryptAndSendAirPressure(float airPressure, const String& boardId, const String& networkName) {
     char encryptedAirPressure[INPUT_BUFFER_LIMIT] = {0};
     char buffer[20];
     dtostrf(airPressure, 6, 2, buffer);
@@ -95,13 +114,11 @@ bool ApiManager::encryptAndSendAirPressure(float airPressure, const String& boar
     encryptAndConvertToHex(buffer, encryptedAirPressure, temp_enc_iv);
 
     FirebaseJson json;
-    json.set("air_pressure", encryptedAirPressure);
-
-    String nodePath = "boards/" + boardId;
-    return handleApiCall(json, nodePath);
+    json.set(AIR_PRESSURE_KEY, encryptedAirPressure);
+    return setupApiCallWithHistoryData(boardId, networkName, json, AIR_PRESSURE_KEY);
 }
 
-bool ApiManager::encryptAndSendLuminosity(float luminosity, const String& boardId) {
+bool ApiManager::encryptAndSendLuminosity(float luminosity, const String& boardId, const String& networkName) {
     char encryptedLuminosity[INPUT_BUFFER_LIMIT] = {0};
     char buffer[20];
     dtostrf(luminosity, 6, 2, buffer);
@@ -111,13 +128,11 @@ bool ApiManager::encryptAndSendLuminosity(float luminosity, const String& boardI
     encryptAndConvertToHex(buffer, encryptedLuminosity, temp_enc_iv);
 
     FirebaseJson json;
-    json.set("luminosity", encryptedLuminosity);
-
-    String nodePath = "boards/" + boardId;
-    return handleApiCall(json, nodePath);
+    json.set(LUMINOSITY_KEY, encryptedLuminosity);
+    return setupApiCallWithHistoryData(boardId, networkName, json, LUMINOSITY_KEY);
 }
 
-bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& boardId) {
+bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& boardId, const String& networkName) {
     // Convert the moistureLevel integer to a string
     String moistureStr = String(soilMoisture);
 
@@ -131,8 +146,6 @@ bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& boar
     encryptAndConvertToHex(buffer, encryptedSoilMoisture, temp_enc_iv);
 
     FirebaseJson json;
-    json.set("soil_moisture", encryptedSoilMoisture);
-
-    String nodePath = "boards/" + boardId;
-    return handleApiCall(json, nodePath);
+    json.set(SOIL_MOISTURE_KEY, encryptedSoilMoisture);
+    return setupApiCallWithHistoryData(boardId, networkName, json, SOIL_MOISTURE_KEY);
 }

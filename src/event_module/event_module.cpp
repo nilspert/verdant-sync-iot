@@ -65,14 +65,11 @@ Event EventModule::createEvent(
 }
 
 String EventModule::generateMessageId(const String& eventType) {
-    String messageId = getBoardId() + ":" + getCurrentTimeAsString() + ":" + eventType;
+    String messageId = getCurrentTimeAsString() + ":" + eventType;
     return messageId;
 }
 
-void EventModule::sendEventToFirebase(const Event &event) {
-    // Generate a UUID string
-    // String messageId = generateMessageId();
-    
+void EventModule::sendEventToFirebase(const Event &event) {    
     // Gather and encrypt event information
     char encryptedHostname[INPUT_BUFFER_LIMIT] = {0};
     char encryptedSeverity[INPUT_BUFFER_LIMIT] = {0};
@@ -102,7 +99,7 @@ void EventModule::sendEventToFirebase(const Event &event) {
     json.set(event.messageId + "/ssid", encryptedWifiSSID);
 
     String encryptedWifiSSIDString(encryptedWifiSSID); 
-    String nodePath = "events/" + event.severity + "/" + getFormattedDate() + encryptedWifiSSIDString + "/";
+    String nodePath = "events/" + event.severity + "/" + getFormattedDate() + encryptedWifiSSIDString + "/" + getBoardId() + "/";
     if (sendFirebaseData(json, nodePath.c_str())) {
         Serial.println("Event data sent successfully.");
     } else {
