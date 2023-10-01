@@ -5,7 +5,7 @@
 #include <AESLib.h>
 
 #define INPUT_BUFFER_LIMIT (128 + 1)
-#define NUM_IVS 19 // Number of IVs 
+#define NUM_IVS 20 // Number of IVs 
 
 // Declare enc_ivs as extern
 extern byte enc_ivs[NUM_IVS][N_BLOCK];

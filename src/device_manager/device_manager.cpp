@@ -10,17 +10,20 @@
 // Constants and Configuration Settings
 const int SERIAL_BAUD_RATE = 115200;
 const int LOOP_DELAY = 10000;
-const int WATERING_SEQUENCE = 2000;
-const int ANALOG_OUTPUT_PIN = A0;               // Analog pin for CD74HC4051E
-const int DIGITAL_WATER_PUMP_PIN = 16;           // Digital pin for water pump power
+const int WATERING_SEQUENCE = 3000;
+const int ANALOG_OUTPUT_PIN = A0;
+const int DIGITAL_WATER_PUMP_PIN = 16;
 const int DIGITAL_DHT22_PIN = 2;
 const int DIGITAL_CD74HC4051E_CONTROL_PIN_1 = 14;
 const int DIGITAL_CD74HC4051E_CONTROL_PIN_2 = 12;
 const int DIGITAL_CD74HC4051E_CONTROL_PIN_3 = 13;
+const int DIGITAL_HC_SR04_TRIGGER_PIN = 0;
+const int DIGITAL_HC_SR04_ECHO_PIN = 15;
 const int I2C_D1 = 5;
 const int I2C_D2 = 4;
 const int SOIL_WET = 500;
 const int SOIL_DRY = 750;
+const int MAX_DISTANCE_CM = 450; 
 
 // Events
 const char* INFO = "INFO";
@@ -37,6 +40,7 @@ const char* AIR_PRESSURE = "0x4";
 const char* SOIL_MOISTURE = "0x5";
 const char* SOIL_MOISTURE_INFO = "0x6";
 const char* LUMINOSITY = "0x7";
+const char* WATER_TANK_LEVEL = "0x8";
 
 const char* ADD_BOARD_INFO_ERROR_MESSAGE = "Failed to add board information.";
 const char* ADD_AUTHORIZED_DEVICE_PENDING_MESSAGE = "Device is pending authorization. Data sending disabled.";
@@ -46,6 +50,7 @@ const char* SEND_HUMIDITY_ERROR_MESSAGE = "Failed to send humidity data.";
 const char* SEND_AIR_PRESSURE_ERROR_MESSAGE = "Failed to send air pressure data.";
 const char* SEND_SOIL_MOISTURE_ERROR_MESSAGE = "Failed to send soil moisture data.";
 const char* SEND_LUMINOSITY_ERROR_MESSAGE = "Failed to send luminosity data.";
+const char* SEND_WATER_TANK_LEVEL_ERROR_MESSAGE = "Failed to send water tank level data.";
 const char* SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE = "Status: high soil moisture.";
 const char* SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE = "Status: optimal soil moisture.";
 const char* SEND_SOIL_MOISTURE_STATUS_DRY_MESSAGE = "Status: low soil moisture.";
@@ -64,12 +69,17 @@ void DeviceManager::setup() {
     Wire.begin(I2C_D2, I2C_D1);
     bmp.begin(0x76);
     dht.begin();
+
     pinMode(DIGITAL_CD74HC4051E_CONTROL_PIN_1, OUTPUT);
     pinMode(DIGITAL_CD74HC4051E_CONTROL_PIN_2, OUTPUT);
     pinMode(DIGITAL_CD74HC4051E_CONTROL_PIN_3, OUTPUT);
-    pinMode(DIGITAL_WATER_PUMP_PIN, OUTPUT); // Set the digital pin as an output
+    pinMode(DIGITAL_WATER_PUMP_PIN, OUTPUT);
+    pinMode(DIGITAL_HC_SR04_TRIGGER_PIN, OUTPUT);  
+	pinMode(DIGITAL_HC_SR04_ECHO_PIN, INPUT); 
+
     digitalWrite(DIGITAL_WATER_PUMP_PIN, LOW);
     initModules();
+
     String boardId = getBoardId();
     if (!isDeviceAddedToFirebase(boardId)) {
         registerDeviceForAuthorization(boardId);
@@ -123,7 +133,35 @@ int DeviceManager::readPhotoresistor() {
 }
 
 void DeviceManager::activateWaterPump(bool activate) {
-    // digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
+    digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
+}
+
+float DeviceManager::readWaterTankLevel() {
+    digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, LOW);
+
+    // Measure the duration of the echo pulse
+    unsigned long duration = pulseIn(DIGITAL_HC_SR04_ECHO_PIN, HIGH);
+
+    // Calculate the distance in centimeters
+    float distance = (duration * 0.0343) / 2;
+
+    // Check for out-of-range or error conditions
+    if (distance < 2 || distance > MAX_DISTANCE_CM) {
+        // Out of range or invalid measurement
+        Serial.println("Out of range or invalid measurement");
+        return -1.0;
+    } else {
+        // Print the measured distance
+        Serial.print("Distance: ");
+        Serial.print(distance);
+        Serial.println(" cm");
+    }
+    
+    return distance;
 }
 
 void DeviceManager::loop() {
@@ -215,6 +253,16 @@ void DeviceManager::loop() {
         Serial.println("Stop!");
         waterPumpActivated = false;
         activateWaterPump(false);
+
+        delay(1000);
+
+        float waterTankLevel = readWaterTankLevel();
+        if (apiManager.encryptAndSendWaterTankLevel(waterTankLevel, boardId, networkName)) {
+            Serial.println("Water tank level data sent successfully.");
+        } else {
+            Serial.println("Failed to send water tank level data.");
+            handleEvent(ERROR, SEND_WATER_TANK_LEVEL_ERROR_MESSAGE, WATER_TANK_LEVEL);
+        }
     }
 
     eventModule.loop();

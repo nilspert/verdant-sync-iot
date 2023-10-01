@@ -19,6 +19,7 @@ private:
     void registerDeviceForAuthorization(String boardId);
     int readSoilMoistureSensor();
     int readPhotoresistor();
+    float readWaterTankLevel();
     void handleEvent(const char* severity, const char* message, const char* eventType); 
     void activateWaterPump(bool activate);
 };

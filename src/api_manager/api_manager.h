@@ -15,6 +15,7 @@ public:
     bool encryptAndSendAirPressure(float airPressure, const String& boardId, const String& networkName);
     bool encryptAndSendSoilMoisture(int soilMoisture, const String& boardId, const String& networkName);
     bool encryptAndSendLuminosity(float luminosity, const String& boardId, const String& networkName);
+    bool encryptAndSendWaterTankLevel(float waterTankLevel, const String& boardId, const String& networkName);
 private: 
     bool setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey);
     bool handleApiCall(FirebaseJson json, const String& nodePath);

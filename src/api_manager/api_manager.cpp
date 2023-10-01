@@ -8,6 +8,7 @@ const char* HUMIDITY_KEY = "humidity";
 const char* LUMINOSITY_KEY = "luminosity";
 const char* SOIL_MOISTURE_KEY = "soil_moisture";
 const char* TEMPERATURE_KEY = "temperature";
+const char* WATER_TANK_LEVEL_KEY = "water_tank_level";
 
 bool ApiManager::setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey) {
     char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0};
@@ -148,4 +149,18 @@ bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& boar
     FirebaseJson json;
     json.set(SOIL_MOISTURE_KEY, encryptedSoilMoisture);
     return setupApiCallWithHistoryData(boardId, networkName, json, SOIL_MOISTURE_KEY);
+}
+
+bool ApiManager::encryptAndSendWaterTankLevel(float waterTankLevel, const String& boardId, const String& networkName) {
+    char encryptedWaterTankLevel[INPUT_BUFFER_LIMIT] = {0};
+    char buffer[20];
+    dtostrf(waterTankLevel, 6, 2, buffer);
+
+    byte temp_enc_iv[N_BLOCK];
+    generateNewIV(temp_enc_iv, enc_ivs[19]);
+    encryptAndConvertToHex(buffer, encryptedWaterTankLevel, temp_enc_iv);
+
+    FirebaseJson json;
+    json.set(WATER_TANK_LEVEL_KEY, encryptedWaterTankLevel);
+    return setupApiCallWithHistoryData(boardId, networkName, json, WATER_TANK_LEVEL_KEY);
 }
