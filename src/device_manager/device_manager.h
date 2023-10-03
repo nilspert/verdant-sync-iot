@@ -17,9 +17,15 @@ public:
 private:
     void initModules();
     void registerDeviceForAuthorization(String boardId);
+    void readAndSendTemperature(String boardId, String networkName);
+    void readAndSendHumidity(String boardId, String networkName);
+    void readAndSendAirPressure(String boardId, String networkName);
+    void readAndSendLuminosity(String boardId, String networkName);
+    int readAndSendSoilMoisture(String boardId, String networkName);
+    float readAndSendWaterTankLevel(String boardId, String networkName);
     int readSoilMoistureSensor();
     int readPhotoresistor();
-    float readWaterTankLevel();
+    bool checkSoilStatus(int soilMoisture);
     void handleEvent(const char* severity, const char* message, const char* eventType); 
     void activateWaterPump(bool activate);
 };

@@ -9,8 +9,8 @@
 
 // Constants and Configuration Settings
 const int SERIAL_BAUD_RATE = 115200;
-const int LOOP_DELAY = 10000;
-const int WATERING_SEQUENCE = 3000;
+const int LOOP_DELAY = 30000;
+const int WATERING_SEQUENCE = 5000;
 const int ANALOG_OUTPUT_PIN = A0;
 const int DIGITAL_WATER_PUMP_PIN = 16;
 const int DIGITAL_DHT22_PIN = 2;
@@ -24,6 +24,7 @@ const int I2C_D2 = 4;
 const int SOIL_WET = 500;
 const int SOIL_DRY = 750;
 const int MAX_DISTANCE_CM = 450; 
+const float MINIMUM_WATER_TANK_LEVEL = 12.5;
 
 // Events
 const char* INFO = "INFO";
@@ -63,6 +64,9 @@ DHT dht(DIGITAL_DHT22_PIN, DHT_TYPE);
 unsigned long previousMillis = 0;
 unsigned long waterPumpActivatedMillis = 0;
 bool waterPumpActivated = false;
+bool sensorReadingsDone = false;
+int currentSoilMoisture = 1024;
+float currentWaterTankLevel = -1.0;
 
 void DeviceManager::setup() {
     Serial.begin(SERIAL_BAUD_RATE);
@@ -114,29 +118,71 @@ void DeviceManager::registerDeviceForAuthorization(String boardId) {
     }
 }
 
-int DeviceManager::readSoilMoistureSensor() {
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_1, LOW);
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_2, LOW);
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_3, HIGH);
-    delay(10); // Allow power to settle
-    int val = analogRead(ANALOG_OUTPUT_PIN); // Read the analog value from sensor
-    return val; // Return analog moisture value
+void DeviceManager::readAndSendTemperature(String boardId, String networkName) {
+    // Read temperature
+    float temperature = dht.readTemperature();
+
+    Serial.print("Temperature: ");
+    Serial.print(temperature);
+    Serial.println(" *C");
+
+    if (apiManager.encryptAndSendTemperature(temperature, boardId, networkName)) {
+        Serial.println("Temperature data sent successfully.");
+    } else {
+        Serial.println("Failed to send temperature data.");
+        handleEvent(ERROR, SEND_TEMPERATURE_ERROR_MESSAGE, TEMPERATURE);
+    }
 }
 
-int DeviceManager::readPhotoresistor() {
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_1, LOW);
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_2, HIGH);
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_3, LOW);
-    delay(10); // Allow power to settle
-    int val = analogRead(ANALOG_OUTPUT_PIN); // Read the analog value from sensor
-    return val; // Return analog luminosity value
+void DeviceManager::readAndSendHumidity(String boardId, String networkName) {
+    // Read humidity
+    float humidity = dht.readHumidity();
+
+    Serial.print("Humidity: ");
+    Serial.print(humidity);
+    Serial.println(" %");
+
+    if (apiManager.encryptAndSendHumidity(humidity, boardId, networkName)) {
+        Serial.println("Humidity data sent successfully.");
+    } else {
+        Serial.println("Failed to send humidity data.");
+        handleEvent(ERROR, SEND_HUMIDITY_ERROR_MESSAGE, HUMIDITY);
+    }
 }
 
-void DeviceManager::activateWaterPump(bool activate) {
-    digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
+void DeviceManager::readAndSendAirPressure(String boardId, String networkName) {
+    // Read air pressure
+    float airPressure = bmp.readPressure() / 100.0F; // Convert to hPa
+
+    Serial.print("Air pressure: ");
+    Serial.print(airPressure);
+    Serial.println(" hPa");
+
+    if (apiManager.encryptAndSendAirPressure(airPressure, boardId, networkName)) {
+        Serial.println("Air pressure data sent successfully.");
+    } else {
+        Serial.println("Failed to send air pressure data.");
+        handleEvent(ERROR, SEND_AIR_PRESSURE_ERROR_MESSAGE, AIR_PRESSURE);
+    }
 }
 
-float DeviceManager::readWaterTankLevel() {
+void DeviceManager::readAndSendLuminosity(String boardId, String networkName) {
+    // Read luminosity
+    int luminosity = readPhotoresistor();
+
+    Serial.print("Luminosity: ");
+    Serial.print(luminosity);
+    Serial.println(" %");
+
+    if (apiManager.encryptAndSendLuminosity(luminosity, boardId, networkName)) {
+        Serial.println("Luminosity data sent successfully.");
+    } else {
+        Serial.println("Failed to send luminosity data.");
+        handleEvent(ERROR, SEND_LUMINOSITY_ERROR_MESSAGE, LUMINOSITY);
+    }
+}
+
+float DeviceManager::readAndSendWaterTankLevel(String boardId, String networkName) {
     digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, LOW);
     delayMicroseconds(2);
     digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, HIGH);
@@ -160,8 +206,68 @@ float DeviceManager::readWaterTankLevel() {
         Serial.print(distance);
         Serial.println(" cm");
     }
+
+    if (apiManager.encryptAndSendWaterTankLevel(distance, boardId, networkName)) {
+        Serial.println("Water tank level data sent successfully.");
+    } else {
+        Serial.println("Failed to send water tank level data.");
+        handleEvent(ERROR, SEND_WATER_TANK_LEVEL_ERROR_MESSAGE, WATER_TANK_LEVEL);
+    }
     
     return distance;
+}
+
+int DeviceManager::readAndSendSoilMoisture(String boardId, String networkName) {
+    // Read soil moisture
+    int soilMoisture = readSoilMoistureSensor();
+    Serial.print("Soil moisture: ");
+    Serial.print(soilMoisture);
+    Serial.println(" %");
+    if (apiManager.encryptAndSendSoilMoisture(soilMoisture, boardId, networkName)) {
+        Serial.println("Soil moisture data sent successfully.");
+    } else {
+        Serial.println("Failed to send soil moisture data.");
+        handleEvent(ERROR, SEND_SOIL_MOISTURE_ERROR_MESSAGE, SOIL_MOISTURE);
+    }
+    return soilMoisture;
+}
+
+bool DeviceManager::checkSoilStatus(int soilMoisture) {
+    bool startWateringSequence = false;
+    if (soilMoisture < SOIL_WET) {
+        Serial.println(SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE);
+        handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE, SOIL_MOISTURE_INFO);
+    } else if (soilMoisture >= SOIL_WET && soilMoisture < SOIL_DRY) {
+        Serial.println(SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE);
+        handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE, SOIL_MOISTURE_INFO);
+    } else {
+        Serial.println(SEND_SOIL_MOISTURE_STATUS_DRY_MESSAGE);
+        handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_DRY_MESSAGE, SOIL_MOISTURE_INFO);
+        startWateringSequence = true;
+    }
+    return startWateringSequence;
+}
+
+int DeviceManager::readSoilMoistureSensor() {
+    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_1, LOW);
+    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_2, LOW);
+    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_3, HIGH);
+    delay(10); // Allow power to settle
+    int val = analogRead(ANALOG_OUTPUT_PIN); // Read the analog value from sensor
+    return val; // Return analog moisture value
+}
+
+int DeviceManager::readPhotoresistor() {
+    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_1, LOW);
+    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_2, HIGH);
+    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_3, LOW);
+    delay(10); // Allow power to settle
+    int val = analogRead(ANALOG_OUTPUT_PIN); // Read the analog value from sensor
+    return val; // Return analog luminosity value
+}
+
+void DeviceManager::activateWaterPump(bool activate) {
+    digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
 }
 
 void DeviceManager::loop() {
@@ -172,97 +278,34 @@ void DeviceManager::loop() {
     if ((currentMillis - previousMillis >= LOOP_DELAY) && isDeviceAuthorized(boardId)) {        
         Serial.println("Looping away...");
 
-        // Read temperature
-        float temperature = dht.readTemperature();
-        Serial.print("Temperature: ");
-        Serial.print(temperature);
-        Serial.println(" *C");
-        if (apiManager.encryptAndSendTemperature(temperature, boardId, networkName)) {
-            Serial.println("Temperature data sent successfully.");
-        } else {
-            Serial.println("Failed to send temperature data.");
-            handleEvent(ERROR, SEND_TEMPERATURE_ERROR_MESSAGE, TEMPERATURE);
-        }
+        // Read and send sensor data
+        readAndSendTemperature(boardId, networkName);
+        readAndSendHumidity(boardId, networkName);
+        readAndSendAirPressure(boardId, networkName);
+        readAndSendLuminosity(boardId, networkName);
+        currentSoilMoisture = readAndSendSoilMoisture(boardId, networkName);
+        currentWaterTankLevel = readAndSendWaterTankLevel(boardId, networkName);
+        // Reset the timer
+        sensorReadingsDone = true;
+        previousMillis = currentMillis; 
+    }
 
-        // Read humidity
-        float humidity = dht.readHumidity();
-        Serial.print("Humidity: ");
-        Serial.print(humidity);
-        Serial.println(" %");
-        if (apiManager.encryptAndSendHumidity(humidity, boardId, networkName)) {
-            Serial.println("Humidity data sent successfully.");
-        } else {
-            Serial.println("Failed to send humidity data.");
-            handleEvent(ERROR, SEND_HUMIDITY_ERROR_MESSAGE, HUMIDITY);
-        }
-
-        // Read air pressure
-        float airPressure = bmp.readPressure() / 100.0F; // Convert to hPa
-        Serial.print("Air pressure: ");
-        Serial.print(airPressure);
-        Serial.println(" hPa");
-        if (apiManager.encryptAndSendAirPressure(airPressure, boardId, networkName)) {
-            Serial.println("Air pressure data sent successfully.");
-        } else {
-            Serial.println("Failed to send air pressure data.");
-            handleEvent(ERROR, SEND_AIR_PRESSURE_ERROR_MESSAGE, AIR_PRESSURE);
-        }
-        
-        // Read soil moisture
-        int soilMoisture = readSoilMoistureSensor();
-        Serial.print("Soil moisture: ");
-        Serial.print(soilMoisture);
-        Serial.println(" %");
-        if (apiManager.encryptAndSendSoilMoisture(soilMoisture, boardId, networkName)) {
-            Serial.println("Soil moisture data sent successfully.");
-        } else {
-            Serial.println("Failed to send soil moisture data.");
-            handleEvent(ERROR, SEND_SOIL_MOISTURE_ERROR_MESSAGE, SOIL_MOISTURE);
-        }
-
-        int luminosity = readPhotoresistor();
-        Serial.print("Luminosity: ");
-        Serial.print(luminosity);
-        Serial.println(" %");
-        if (apiManager.encryptAndSendLuminosity(luminosity, boardId, networkName)) {
-            Serial.println("Luminosity data sent successfully.");
-        } else {
-            Serial.println("Failed to send luminosity data.");
-            handleEvent(ERROR, SEND_LUMINOSITY_ERROR_MESSAGE, LUMINOSITY);
-        }
-
-        // Determine soil status
-        if (soilMoisture < SOIL_WET) {
-            Serial.println(SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE);
-            handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE, SOIL_MOISTURE_INFO);
-        } else if (soilMoisture >= SOIL_WET && soilMoisture < SOIL_DRY) {
-            Serial.println(SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE);
-            handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE, SOIL_MOISTURE_INFO);
-        } else {
-            Serial.println(SEND_SOIL_MOISTURE_STATUS_DRY_MESSAGE);
-            handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_DRY_MESSAGE, SOIL_MOISTURE_INFO);
+    if (sensorReadingsDone && checkSoilStatus(currentSoilMoisture)) {
+        sensorReadingsDone = false;
+        if (currentWaterTankLevel <= MINIMUM_WATER_TANK_LEVEL) {
+            Serial.println("Activating water pump.");
             activateWaterPump(true);
             waterPumpActivatedMillis = currentMillis;
             waterPumpActivated = true;
+        } else {
+            Serial.println("Water tank level is too low, please refill.");
         }
-
-        previousMillis = currentMillis; // Reset the timer
     }
 
     if (waterPumpActivated && (currentMillis - waterPumpActivatedMillis >= WATERING_SEQUENCE)) {
         Serial.println("Stop!");
         waterPumpActivated = false;
         activateWaterPump(false);
-
-        delay(1000);
-
-        float waterTankLevel = readWaterTankLevel();
-        if (apiManager.encryptAndSendWaterTankLevel(waterTankLevel, boardId, networkName)) {
-            Serial.println("Water tank level data sent successfully.");
-        } else {
-            Serial.println("Failed to send water tank level data.");
-            handleEvent(ERROR, SEND_WATER_TANK_LEVEL_ERROR_MESSAGE, WATER_TANK_LEVEL);
-        }
     }
 
     eventModule.loop();
