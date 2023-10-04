@@ -9,6 +9,8 @@ const char* LUMINOSITY_KEY = "luminosity";
 const char* SOIL_MOISTURE_KEY = "soil_moisture";
 const char* TEMPERATURE_KEY = "temperature";
 const char* WATER_TANK_LEVEL_KEY = "water_tank_level";
+const char* LATEST_WATERING_TIME_KEY = "latest_watering_time";
+const char* WATER_TANK_REFILL_NOTIFICATION_KEY = "refill_water_tank";
 
 bool ApiManager::setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey) {
     char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0};
@@ -163,4 +165,40 @@ bool ApiManager::encryptAndSendWaterTankLevel(float waterTankLevel, const String
     FirebaseJson json;
     json.set(WATER_TANK_LEVEL_KEY, encryptedWaterTankLevel);
     return setupApiCallWithHistoryData(boardId, networkName, json, WATER_TANK_LEVEL_KEY);
+}
+
+bool ApiManager::encryptAndSendLatestWateringTime(const String& currentTime, const String& boardId, const String& networkName) {
+    char encryptedCurrentTime[INPUT_BUFFER_LIMIT] = {0};
+
+    byte temp_enc_iv[N_BLOCK];
+    generateNewIV(temp_enc_iv, enc_ivs[20]);
+    encryptAndConvertToHex(currentTime.c_str(), encryptedCurrentTime, temp_enc_iv);
+
+    FirebaseJson json;
+    json.set(LATEST_WATERING_TIME_KEY, encryptedCurrentTime);
+    return setupApiCallWithHistoryData(boardId, networkName, json, LATEST_WATERING_TIME_KEY);
+}
+
+
+bool ApiManager::encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& boardId, const String& networkName) {
+    char encryptedCurrentTime[INPUT_BUFFER_LIMIT] = {0};
+    char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0};
+    byte temp_enc_iv_1[N_BLOCK];
+    byte temp_enc_iv_2[N_BLOCK];
+    generateNewIV(temp_enc_iv_1, enc_ivs[21]);
+    generateNewIV(temp_enc_iv_2, enc_ivs[22]);
+    encryptAndConvertToHex(currentTime.c_str(), encryptedCurrentTime, temp_enc_iv_1);
+    encryptAndConvertToHex(networkName.c_str(), encryptedWifiSSID, temp_enc_iv_2);
+    String encryptedWifiSSIDString(encryptedWifiSSID); 
+
+    FirebaseJson json;
+    json.set(WATER_TANK_REFILL_NOTIFICATION_KEY, encryptedCurrentTime);
+    json.set("notification_read", false);
+
+    String nodePath = "notifications/" + getFormattedDate() + encryptedWifiSSIDString + "/" + boardId + "/" + getCurrentTimeAsString();
+    if (handleApiCall(json, nodePath)) {
+        return true;
+    } else {
+        return false;
+    }
 }

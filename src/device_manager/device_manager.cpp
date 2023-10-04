@@ -42,6 +42,8 @@ const char* SOIL_MOISTURE = "0x5";
 const char* SOIL_MOISTURE_INFO = "0x6";
 const char* LUMINOSITY = "0x7";
 const char* WATER_TANK_LEVEL = "0x8";
+const char* LATEST_WATERING_TIME = "0x9";
+const char* WATER_TANK_REFILL_NOTIFICATION = "0xA";
 
 const char* ADD_BOARD_INFO_ERROR_MESSAGE = "Failed to add board information.";
 const char* ADD_AUTHORIZED_DEVICE_PENDING_MESSAGE = "Device is pending authorization. Data sending disabled.";
@@ -52,6 +54,8 @@ const char* SEND_AIR_PRESSURE_ERROR_MESSAGE = "Failed to send air pressure data.
 const char* SEND_SOIL_MOISTURE_ERROR_MESSAGE = "Failed to send soil moisture data.";
 const char* SEND_LUMINOSITY_ERROR_MESSAGE = "Failed to send luminosity data.";
 const char* SEND_WATER_TANK_LEVEL_ERROR_MESSAGE = "Failed to send water tank level data.";
+const char* SEND_LATEST_WATERING_TIME_ERROR_MESSAGE = "Failed to send latest watering time.";
+const char* SEND_WATER_TANK_REFILL_NOTIFICATION_ERROR_MESSAGE = "Failed to send water tank refill notification.";
 const char* SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE = "Status: high soil moisture.";
 const char* SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE = "Status: optimal soil moisture.";
 const char* SEND_SOIL_MOISTURE_STATUS_DRY_MESSAGE = "Status: low soil moisture.";
@@ -270,6 +274,24 @@ void DeviceManager::activateWaterPump(bool activate) {
     digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
 }
 
+void DeviceManager::sendLatestWateringTime(String boardId, String networkName) {
+    if (apiManager.encryptAndSendLatestWateringTime(getCurrentTimeAsString(), boardId, networkName)) {
+        Serial.println("Watering time sent successfully.");
+    } else {
+        Serial.println("Failed to send watering time.");
+        handleEvent(ERROR, SEND_LATEST_WATERING_TIME_ERROR_MESSAGE, LATEST_WATERING_TIME);
+    }
+}
+
+void DeviceManager::sendWaterTankRefillNotification(String boardId, String networkName) {
+    if (apiManager.encryptAndSendWaterTankRefillNotification(getCurrentTimeAsString(), boardId, networkName)) {
+        Serial.println("Water tank refill notification sent successfully.");
+    } else {
+        Serial.println("Failed to send water tank refill notification.");
+        handleEvent(ERROR, SEND_WATER_TANK_REFILL_NOTIFICATION_ERROR_MESSAGE, WATER_TANK_REFILL_NOTIFICATION);
+    }
+}
+
 void DeviceManager::loop() {
     unsigned long currentMillis = millis();
     String boardId = getBoardId();
@@ -299,6 +321,7 @@ void DeviceManager::loop() {
             waterPumpActivated = true;
         } else {
             Serial.println("Water tank level is too low, please refill.");
+            sendWaterTankRefillNotification(boardId, networkName);
         }
     }
 
@@ -306,6 +329,7 @@ void DeviceManager::loop() {
         Serial.println("Stop!");
         waterPumpActivated = false;
         activateWaterPump(false);
+        sendLatestWateringTime(boardId, networkName);
     }
 
     eventModule.loop();

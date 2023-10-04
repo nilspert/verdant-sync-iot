@@ -23,6 +23,8 @@ private:
     void readAndSendLuminosity(String boardId, String networkName);
     int readAndSendSoilMoisture(String boardId, String networkName);
     float readAndSendWaterTankLevel(String boardId, String networkName);
+    void sendLatestWateringTime(String boardId, String networkName);
+    void sendWaterTankRefillNotification(String boardId, String networkName);
     int readSoilMoistureSensor();
     int readPhotoresistor();
     bool checkSoilStatus(int soilMoisture);

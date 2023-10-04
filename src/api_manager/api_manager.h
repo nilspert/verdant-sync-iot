@@ -16,6 +16,8 @@ public:
     bool encryptAndSendSoilMoisture(int soilMoisture, const String& boardId, const String& networkName);
     bool encryptAndSendLuminosity(float luminosity, const String& boardId, const String& networkName);
     bool encryptAndSendWaterTankLevel(float waterTankLevel, const String& boardId, const String& networkName);
+    bool encryptAndSendLatestWateringTime(const String& currentTime, const String& boardId, const String& networkName);
+    bool encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& boardId, const String& networkName);
 private: 
     bool setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey);
     bool handleApiCall(FirebaseJson json, const String& nodePath);
