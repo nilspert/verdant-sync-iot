@@ -1,3 +1,11 @@
+/**
+ * File: api_manager.h
+ * Author: Joonas Nislin
+ * Date: 1.9.2023
+ * Description: This file contains header file of ApiManager.
+ * Holds function declarations and constants for API setup call operations.
+ */
+
 #ifndef API_MANAGER_H
 #define API_MANAGER_H
 
@@ -8,6 +16,7 @@
 
 class ApiManager {
 public:
+    // API operations
     bool encryptAndSendDeviceRegistration(const String& boardId, const String& networkName);
     bool encryptAndSendBoardInfo(const String& boardId, const String& networkName, const String& localIp);
     bool encryptAndSendTemperature(float temperature, const String& boardId, const String& networkName);
@@ -19,6 +28,17 @@ public:
     bool encryptAndSendLatestWateringTime(const String& currentTime, const String& boardId, const String& networkName);
     bool encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& boardId, const String& networkName);
 private: 
+    // API node path keys
+    const char* AIR_PRESSURE_KEY = "air_pressure";
+    const char* HUMIDITY_KEY = "humidity";
+    const char* LUMINOSITY_KEY = "luminosity";
+    const char* SOIL_MOISTURE_KEY = "soil_moisture";
+    const char* TEMPERATURE_KEY = "temperature";
+    const char* WATER_TANK_LEVEL_KEY = "water_tank_level";
+    const char* LATEST_WATERING_TIME_KEY = "latest_watering_time";
+    const char* WATER_TANK_REFILL_NOTIFICATION_KEY = "refill_water_tank";
+
+    // API setup functions
     bool setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey);
     bool handleApiCall(FirebaseJson json, const String& nodePath);
 };

@@ -1,3 +1,12 @@
+/**
+ * File: event_module.cpp
+ * Author: Joonas Nislin
+ * Date: 1.9.2023
+ * Description: This file contains implementation of EventModule.
+ * Provides functionality for creating and sending events to firebase.
+ * Uses circular event buffer for enqueuing and dequeuing events.
+ */
+
 #include "event_module.h"
 #include "../../config/config.h"
 #include "../wifi_module/wifi_module.h"
@@ -5,7 +14,7 @@
 #include "../firebase_module/firebase_module.h"
 #include "../aes_module/aes_module.h"
 
-// Enqueue an event into the circular buffer
+// Function for enqueuing an event into the circular buffer
 bool EventModule::enqueueEvent(const Event &event) {
     if (numEvents < MAX_EVENTS) {
         eventBuffer[bufferEnd] = event;
@@ -16,7 +25,7 @@ bool EventModule::enqueueEvent(const Event &event) {
     return false; // Buffer is full
 }
 
-// Dequeue the next event from the circular buffer
+// Function for dequeuing the next event from the circular buffer
 bool EventModule::dequeueEvent(Event &event) {
     if (numEvents > 0) {
         event = eventBuffer[bufferStart];
@@ -27,6 +36,7 @@ bool EventModule::dequeueEvent(Event &event) {
     return false; // No events in the buffer
 }
 
+// Function for creating and enqueuing event
 void EventModule::createAndEnqueueEvent(
     const String& timestamp, 
     const String& hostname, 
@@ -44,6 +54,7 @@ void EventModule::createAndEnqueueEvent(
     }
 }
 
+// Function for creating event struct
 Event EventModule::createEvent(
   const String& timestamp, 
   const String& hostname, 
@@ -64,19 +75,21 @@ Event EventModule::createEvent(
     return event;
 }
 
+// Function for generating messageId
 String EventModule::generateMessageId(const String& eventType) {
     String messageId = getCurrentTimeAsString() + ":" + eventType;
     return messageId;
 }
 
+// Function for sending event to firebase
 void EventModule::sendEventToFirebase(const Event &event) {    
-    // Gather and encrypt event information
-    char encryptedHostname[INPUT_BUFFER_LIMIT] = {0};
-    char encryptedSeverity[INPUT_BUFFER_LIMIT] = {0};
-    char encryptedFacility[INPUT_BUFFER_LIMIT] = {0};
-    char encryptedMessage[INPUT_BUFFER_LIMIT] = {0};
-    char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0};
+    char encryptedHostname[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted host name
+    char encryptedSeverity[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted severity
+    char encryptedFacility[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted facility
+    char encryptedMessage[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted message
+    char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted WiFi SSID
 
+    // Gather and encrypt event information
     gatherAndEcryptEventInformation(
       event, 
       encryptedHostname, 
@@ -86,10 +99,9 @@ void EventModule::sendEventToFirebase(const Event &event) {
       encryptedWifiSSID
     );
     
-    // Create a FirebaseJson object to hold the data
-    FirebaseJson json;
+    FirebaseJson json; // Create a FirebaseJson object to hold the data
 
-    // Add data to the JSON object using identifiers
+    // Add encrypted data to the JSON object using identifiers
     json.set(event.messageId + "/timestamp", event.timestamp);
     json.set(event.messageId + "/hostname", encryptedHostname);
     json.set(event.messageId + "/severity", encryptedSeverity);
@@ -98,7 +110,9 @@ void EventModule::sendEventToFirebase(const Event &event) {
     json.set(event.messageId + "/messageId", event.messageId.c_str());
     json.set(event.messageId + "/ssid", encryptedWifiSSID);
 
-    String encryptedWifiSSIDString(encryptedWifiSSID); 
+    String encryptedWifiSSIDString(encryptedWifiSSID); // Create String object to hold the encrypted WiFi SSID data
+
+    // Create nodepath and send data to firebase
     String nodePath = "events/" + event.severity + "/" + getFormattedDate() + encryptedWifiSSIDString + "/" + getBoardId() + "/";
     if (sendFirebaseData(json, nodePath.c_str())) {
         Serial.println("Event data sent successfully.");
@@ -107,6 +121,7 @@ void EventModule::sendEventToFirebase(const Event &event) {
     }
 }
 
+// Function for encrypting event data
 void EventModule::gatherAndEcryptEventInformation(
   const Event &event, 
   char* encryptedHostname, 
@@ -115,30 +130,30 @@ void EventModule::gatherAndEcryptEventInformation(
   char* encryptedMessage, 
   char* encryptedWifiSSID
 ) {
-    Serial.println("Encrypting event:");
-    Serial.println(event.message);
+    byte temp_enc_iv[N_BLOCK]; // Create array to store temporary initialization vector
 
-    byte temp_enc_iv[N_BLOCK]; // Temporary IV for each encryption
+    generateNewIV(temp_enc_iv, enc_ivs[9]); // Generate a new IV for encryption
+    encryptAndConvertToHex(event.hostname.c_str(), encryptedHostname, temp_enc_iv); // Encrypt hostname and convert to hex
 
-    generateNewIV(temp_enc_iv, enc_ivs[9]);
-    encryptAndConvertToHex(event.hostname.c_str(), encryptedHostname, temp_enc_iv);
+    generateNewIV(temp_enc_iv, enc_ivs[10]); // Generate a new IV for encryption
+    encryptAndConvertToHex(event.severity.c_str(), encryptedSeverity, temp_enc_iv); // Encrypt severity and convert to hex
 
-    generateNewIV(temp_enc_iv, enc_ivs[10]);
-    encryptAndConvertToHex(event.severity.c_str(), encryptedSeverity, temp_enc_iv);
+    generateNewIV(temp_enc_iv, enc_ivs[11]); // Generate a new IV for encryption
+    encryptAndConvertToHex(event.facility.c_str(), encryptedFacility, temp_enc_iv); // Encrypt facility and convert to hex
 
-    generateNewIV(temp_enc_iv, enc_ivs[11]);
-    encryptAndConvertToHex(event.facility.c_str(), encryptedFacility, temp_enc_iv);
+    generateNewIV(temp_enc_iv, enc_ivs[12]); // Generate a new IV for encryption
+    encryptAndConvertToHex(event.message.c_str(), encryptedMessage, temp_enc_iv); // Encrypt message and convert to hex
 
-    generateNewIV(temp_enc_iv, enc_ivs[12]);
-    encryptAndConvertToHex(event.message.c_str(), encryptedMessage, temp_enc_iv);
-
-    generateNewIV(temp_enc_iv, enc_ivs[13]);
-    encryptAndConvertToHex(event.ssid.c_str(), encryptedWifiSSID, temp_enc_iv);
+    generateNewIV(temp_enc_iv, enc_ivs[13]); // Generate a new IV for encryption
+    encryptAndConvertToHex(event.ssid.c_str(), encryptedWifiSSID, temp_enc_iv); // Encrypt network name and convert to hex
 }
 
+// Function to process and send events to firebase
 void EventModule::loop() {
     // Check if there are events in the queue
     if (numEvents > 0) {
+        Serial.println("Event count: ");
+        Serial.println(numEvents);
         Event nextEvent;
         if (dequeueEvent(nextEvent)) {
             // Send the next event
