@@ -7,7 +7,7 @@ VerdantSync IoT is an IoT project that automates plant irrigation and monitoring
 - **Sensor Data Logging**: Collects data from various sensors and logs it in Firebase.
 - **Data Encryption**: Encrypts data sent to Firebase using the AESLib library.
 - **Water Pump Control**: Manages a water pump connected to the ESP8266 microcontroller.
-- **Android Control App**: Control application can be found at this repository: (https://github.com/nilspert/verdant-sync)
+- **Android Control App**: Control application can be found at this repository: [VerdantSync](https://github.com/nilspert/verdant-sync)
 
 ## Getting Started
 
