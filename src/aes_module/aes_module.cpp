@@ -7,8 +7,7 @@
  * Uses AESLib.h library for encoding operations. 
  */
 
-#include "aes_module.h"
-#include "../../config/config.h"
+#include "../globals/globals.h"
 
 AESLib aesLib;
 

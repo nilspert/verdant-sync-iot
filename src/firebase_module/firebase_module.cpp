@@ -7,7 +7,7 @@
  * Uses FirebaseESP8266 library.
  */
 
-#include <FirebaseESP8266.h>
+#include "firebase_module.h"
 #include "../../config/config.h" // Include configuration file
 
 FirebaseData firebaseData;

@@ -11,21 +11,17 @@
  */
 
 #include "device_manager.h"
-#include "../../config/config.h"
-#include "../wifi_module/wifi_module.h"
-#include "../time_module/time_module.h"
-#include "../aes_module/aes_module.h"
-#include "../firebase_module/firebase_module.h"
-#include "../api_manager/api_manager.h"
-#include "../event_module/event_module.h"
+#include "../globals/globals.h"
+#include "../sensor_manager/sensor_manager.h"
 
 // Instances for managing API calls and events
-ApiManager apiManager;
 EventModule eventModule;
+SensorManager sensorManager;
+ApiManager apiManager;
 
-// Sensor and time-related variables
-Adafruit_BMP280 bmp; // BMP280 sensor
-DHT dht(DIGITAL_DHT22_PIN, DHT_TYPE); // DHT22 sensor
+// Device and network configuration
+String boardId = "";
+String networkName = "";
 
 // Operation time tracking variables
 unsigned long previousMillis = 0;
@@ -35,30 +31,28 @@ unsigned long waterPumpActivatedMillis = 0;
 bool waterPumpActivated = false;
 bool sensorReadingsDone = false;
 bool startWateringSequence = false;
-int currentSoilMoisture = 1024;
+int currentSoilMoisture = 625;
 float currentWaterTankLevel = -1.0;
 
 // Setup function
 void DeviceManager::setup() {
     Serial.begin(SERIAL_BAUD_RATE); // Initialize serial communication at the specified baud rate
-    Wire.begin(I2C_D2, I2C_D1); // Initialize I2C communication with specified pins for BMP280
-    bmp.begin(0x76); // Initialize BMP280 sensor with specified I2C address (0x76)
-    dht.begin(); // Initialize DHT sensor
 
     // Set pin modes and set water pump to LOW as in OFF
     pinMode(DIGITAL_CD74HC4051E_CONTROL_PIN_2, OUTPUT);
     pinMode(DIGITAL_CD74HC4051E_CONTROL_PIN_3, OUTPUT);
     pinMode(DIGITAL_SOIL_MOISTURE_SENSOR_PIN, OUTPUT);
     pinMode(DIGITAL_WATER_PUMP_PIN, OUTPUT);
-    pinMode(DIGITAL_HC_SR04_TRIGGER_PIN, OUTPUT);  
-    pinMode(DIGITAL_HC_SR04_ECHO_PIN, INPUT); 
     digitalWrite(DIGITAL_WATER_PUMP_PIN, LOW);
     digitalWrite(DIGITAL_SOIL_MOISTURE_SENSOR_PIN, LOW);
 
     initModules(); // Initialize modules
 
+    // Set board related variables
+    boardId = getBoardId(); // Unique board identifier
+    networkName = getNetworkName(); // WiFi SSID
+
     // Check and register device if not added to Firebase
-    String boardId = getBoardId();
     if (!isDeviceAuthorized(boardId)) {
         registerDeviceForAuthorization(boardId);
     }
@@ -70,17 +64,11 @@ void DeviceManager::initModules() {
     timeModuleInit();
     aesModuleInit();
     firebaseModuleInit();
-}
-
-// Function for event creation
-void DeviceManager::handleEvent(const char* severity, const char* message, const char* eventType) {
-    // Call eventModule createAndEnqueueEvent to create and enqueue event for sending to firebase
-    eventModule.createAndEnqueueEvent(getCurrentTimeAsString(), BOARD_NAME, severity, DEVICE, message, getNetworkName(), eventType);
+    sensorManager.setup();
 }
 
 // Function for registering device
 void DeviceManager::registerDeviceForAuthorization(String boardId) {
-    String networkName = getNetworkName();
     String localIp = getLocalIpAsString();
 
     // Register device and send registration data
@@ -100,155 +88,15 @@ void DeviceManager::registerDeviceForAuthorization(String boardId) {
     }
 }
 
-// Function for reading and sending temperature data to firebase
-void DeviceManager::readAndSendTemperature(String boardId, String networkName) {
-    float temperature = dht.readTemperature(); // Read temperature from DHT22
-
-    // Print temperature reading
-    Serial.print("Temperature: ");
-    Serial.print(temperature);
-    Serial.println(" *C");
-
-    // Send temperature data to Firebase
-    if (apiManager.encryptAndSendTemperature(temperature, boardId, networkName)) {
-        Serial.println("Temperature data sent successfully.");
-    } else {
-        Serial.println("Failed to send temperature data.");
-        handleEvent(ERROR, SEND_TEMPERATURE_ERROR_MESSAGE, TEMPERATURE);
-    }
-}
-
-// Function for reading and sending humidity data to firebase
-void DeviceManager::readAndSendHumidity(String boardId, String networkName) {
-    float humidity = dht.readHumidity(); // Read humidity from DHT22
-
-    // Print humidity reading
-    Serial.print("Humidity: ");
-    Serial.print(humidity);
-    Serial.println(" %");
-
-    // Send humidity data to Firebase
-    if (apiManager.encryptAndSendHumidity(humidity, boardId, networkName)) {
-        Serial.println("Humidity data sent successfully.");
-    } else {
-        Serial.println("Failed to send humidity data.");
-        handleEvent(ERROR, SEND_HUMIDITY_ERROR_MESSAGE, HUMIDITY);
-    }
-}
-
-// Function for reading and sending air pressure data to firebase
-void DeviceManager::readAndSendAirPressure(String boardId, String networkName) {
-    // Read air pressure from BMP280 and convert to hPa
-    float airPressure = bmp.readPressure() / 100.0F;
-
-    // Print air pressure reading
-    Serial.print("Air pressure: ");
-    Serial.print(airPressure);
-    Serial.println(" hPa");
-
-    // Send air pressure data to Firebase
-    if (apiManager.encryptAndSendAirPressure(airPressure, boardId, networkName)) {
-        Serial.println("Air pressure data sent successfully.");
-    } else {
-        Serial.println("Failed to send air pressure data.");
-        handleEvent(ERROR, SEND_AIR_PRESSURE_ERROR_MESSAGE, AIR_PRESSURE);
-    }
-}
-
-// Function for reading and sending luminosity data to firebase
-void DeviceManager::readAndSendLuminosity(String boardId, String networkName) {
-    int luminosity = readPhotoresistor(); // Read luminosity from photoresistor
-
-    // Print luminosity reading
-    Serial.print("Luminosity: ");
-    Serial.print(luminosity);
-    Serial.println(" %");
-
-    // Send luminosity data to Firebase
-    if (apiManager.encryptAndSendLuminosity(luminosity, boardId, networkName)) {
-        Serial.println("Luminosity data sent successfully.");
-    } else {
-        Serial.println("Failed to send luminosity data.");
-        handleEvent(ERROR, SEND_LUMINOSITY_ERROR_MESSAGE, LUMINOSITY);
-    }
-}
-
-// Function for reading and sending water tank level data to firebase
-float DeviceManager::readAndSendWaterTankLevel(String boardId, String networkName) {
-    // Measure water tank level with HC_SR04
-    // 10 µs HIGH voltage starts echo pulse
-    digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, LOW);
-    delayMicroseconds(2);
-    digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, LOW);
-
-    // Measure the duration of the echo pulse
-    unsigned long duration = pulseIn(DIGITAL_HC_SR04_ECHO_PIN, HIGH);
-
-    // Calculate the distance in centimeters
-    float distance = (duration * 0.0343) / 2;
-
-    // Check for out-of-range or error conditions
-    if (distance < 2 || distance > MAX_DISTANCE_CM) {
-        // Out of range or invalid measurement
-        Serial.println("Out of range or invalid measurement");
-        return -1.0;
-    } else {
-        // Print the measured distance
-        Serial.print("Distance: ");
-        Serial.print(distance);
-        Serial.println(" cm");
-    }
-
-    // Send water tank level data to Firebase
-    if (apiManager.encryptAndSendWaterTankLevel(distance, boardId, networkName)) {
-        Serial.println("Water tank level data sent successfully.");
-    } else {
-        Serial.println("Failed to send water tank level data.");
-        handleEvent(ERROR, SEND_WATER_TANK_LEVEL_ERROR_MESSAGE, WATER_TANK_LEVEL);
-    }
-    
-    // Return value of distance
-    return distance;
-}
-
-// Function for reading and sending soil moisture data to firebase
-int DeviceManager::readAndSendSoilMoisture(String boardId, String networkName) {
-    // Activate soil moisture sensor via relay
-    activateSoilMoistureSensor(true);
-    delay(10); // Small delay so that the relay has time to stabilize
-    // Read soil moisture
-    int soilMoisture = readSoilMoistureSensor();
-    // Deactivate soil moisture sensor via relay
-    activateSoilMoistureSensor(false);
-
-    // Print soil moisture reading
-    Serial.print("Soil moisture: ");
-    Serial.print(soilMoisture);
-    Serial.println(" %");
-
-    // Send soil moisture data to firebase
-    if (apiManager.encryptAndSendSoilMoisture(soilMoisture, boardId, networkName)) {
-        Serial.println("Soil moisture data sent successfully.");
-    } else {
-        Serial.println("Failed to send soil moisture data.");
-        handleEvent(ERROR, SEND_SOIL_MOISTURE_ERROR_MESSAGE, SOIL_MOISTURE);
-    }
-
-    // Return value of soil moisture
-    return soilMoisture;
-}
-
 // Function for checking soil moisture status and decision for starting watering sequence
 bool DeviceManager::checkSoilStatus(int soilMoisture) {
     bool startWateringSequenceReturnValue = false; // Return variable, defaults to false
 
     // If statement for checking soil status
-    if (soilMoisture < SOIL_WET) {
+    if (soilMoisture < SOIL_WET_VALUE) {
         Serial.println(SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE);
         handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE, SOIL_MOISTURE_INFO);
-    } else if (soilMoisture >= SOIL_WET && soilMoisture < SOIL_DRY) {
+    } else if (soilMoisture >= SOIL_WET_VALUE && soilMoisture < SOIL_DRY_VALUE) {
         Serial.println(SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE);
         handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE, SOIL_MOISTURE_INFO);
     } else {
@@ -261,37 +109,19 @@ bool DeviceManager::checkSoilStatus(int soilMoisture) {
     return startWateringSequenceReturnValue;
 }
 
-// Function for reading soil moisture sensor value
-int DeviceManager::readSoilMoistureSensor() {
-    // Configure Multiplexer IC 74157 to select soil moisture sensor
-    // CD74HC4051E_CONTROL_PIN_1 is connected to ground so it stays LOW
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_2, LOW);
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_3, HIGH);
-    delay(10); // Short delay so that the sensor stabilizes
-    int val = analogRead(ANALOG_OUTPUT_PIN); // Read the analog value from sensor
-    return val; // Return analog soil moisture value
-}
-
-// Function for reading photoresistor value
-int DeviceManager::readPhotoresistor() {
-    // Configure Multiplexer IC 74157 to select photoresistor
-    // CD74HC4051E_CONTROL_PIN_1 is connected to ground so it stays LOW
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_2, HIGH);
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_3, LOW);
-    delay(10); // Short delay so that the sensor stabilizes
-    int val = analogRead(ANALOG_OUTPUT_PIN); // Read the analog value from sensor
-    return val; // Return analog luminosity value
-}
-
-
-// Function for activating water pump
+// Function for activating water pump relay
 void DeviceManager::activateWaterPump(bool activate) {
     digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
 }
 
-// Function for activating soil moisture sensor
+// Function for activating soil moisture sensor relay
 void DeviceManager::activateSoilMoistureSensor(bool activate) {
     digitalWrite(DIGITAL_SOIL_MOISTURE_SENSOR_PIN, activate ? HIGH : LOW);
+    if (activate) {
+        delay(1000);
+    } else {
+        delay(100);
+    }
 }
 
 // Function for sending latest watering time to firebase
@@ -317,18 +147,21 @@ void DeviceManager::sendWaterTankRefillNotification(String boardId, String netwo
 // Main loop function for DeviceManager
 void DeviceManager::loop() {
     unsigned long currentMillis = millis(); // Current time in milliseconds since device started
-    String boardId = getBoardId(); // Unique board identifier
-    String networkName = getNetworkName(); // WiFi SSID
 
     // If device is authorized and LOOP_DELAY has passed, do sensor readings and data sending to firebase
     if ((currentMillis - previousMillis >= LOOP_DELAY) && isDeviceAuthorized(boardId)) {       
         // Read and send sensor data
-        readAndSendTemperature(boardId, networkName);
-        readAndSendHumidity(boardId, networkName);
-        readAndSendAirPressure(boardId, networkName);
-        readAndSendLuminosity(boardId, networkName);
-        currentSoilMoisture = readAndSendSoilMoisture(boardId, networkName);
-        currentWaterTankLevel = readAndSendWaterTankLevel(boardId, networkName);
+        sensorManager.readAndSendTemperature(boardId, networkName);
+        sensorManager.readAndSendHumidity(boardId, networkName);
+        sensorManager.readAndSendAirPressure(boardId, networkName);
+        sensorManager.readAndSendLuminosity(boardId, networkName);
+        currentWaterTankLevel = sensorManager.readAndSendWaterTankLevel(boardId, networkName);
+        // Activate soil moisture sensor via relay
+        activateSoilMoistureSensor(true);
+        currentSoilMoisture = sensorManager.readAndSendSoilMoisture(boardId, networkName);
+        // Deactivate soil moisture sensor via relay
+        activateSoilMoistureSensor(false);
+
         startWateringSequence = checkSoilStatus(currentSoilMoisture);
         Serial.println("Start watering sequence:");
         Serial.println(startWateringSequence == 1 ? "true" : "false");
@@ -347,6 +180,7 @@ void DeviceManager::loop() {
         // Check if current water tank level is below minimum allowed level
         if (currentWaterTankLevel <= MINIMUM_WATER_TANK_LEVEL) {
             Serial.println("Activating water pump.");
+            // Activate water pump via relay
             activateWaterPump(true);
             waterPumpActivatedMillis = currentMillis;
             waterPumpActivated = true;
@@ -361,6 +195,7 @@ void DeviceManager::loop() {
     if (waterPumpActivated && (currentMillis - waterPumpActivatedMillis >= WATERING_SEQUENCE)) {
         Serial.println("Stop!");
         waterPumpActivated = false;
+        // Deactivate water pump via relay
         activateWaterPump(false);
         sendLatestWateringTime(boardId, networkName);
     }

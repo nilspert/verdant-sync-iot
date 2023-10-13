@@ -7,8 +7,7 @@
  */
 
 #include "api_manager.h"
-#include "../../config/config.h"
-#include "../aes_module/aes_module.h"
+#include "../globals/globals.h"
 
 // Function to set up API call for board and history data
 bool ApiManager::setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey) {
