@@ -34,6 +34,7 @@ unsigned long waterPumpActivatedMillis = 0;
 // Flags and initial sensor values
 bool waterPumpActivated = false;
 bool sensorReadingsDone = false;
+bool startWateringSequence = false;
 int currentSoilMoisture = 1024;
 float currentWaterTankLevel = -1.0;
 
@@ -45,13 +46,14 @@ void DeviceManager::setup() {
     dht.begin(); // Initialize DHT sensor
 
     // Set pin modes and set water pump to LOW as in OFF
-    pinMode(DIGITAL_CD74HC4051E_CONTROL_PIN_1, OUTPUT);
     pinMode(DIGITAL_CD74HC4051E_CONTROL_PIN_2, OUTPUT);
     pinMode(DIGITAL_CD74HC4051E_CONTROL_PIN_3, OUTPUT);
+    pinMode(DIGITAL_SOIL_MOISTURE_SENSOR_PIN, OUTPUT);
     pinMode(DIGITAL_WATER_PUMP_PIN, OUTPUT);
     pinMode(DIGITAL_HC_SR04_TRIGGER_PIN, OUTPUT);  
     pinMode(DIGITAL_HC_SR04_ECHO_PIN, INPUT); 
     digitalWrite(DIGITAL_WATER_PUMP_PIN, LOW);
+    digitalWrite(DIGITAL_SOIL_MOISTURE_SENSOR_PIN, LOW);
 
     initModules(); // Initialize modules
 
@@ -213,8 +215,13 @@ float DeviceManager::readAndSendWaterTankLevel(String boardId, String networkNam
 
 // Function for reading and sending soil moisture data to firebase
 int DeviceManager::readAndSendSoilMoisture(String boardId, String networkName) {
+    // Activate soil moisture sensor via relay
+    activateSoilMoistureSensor(true);
+    delay(10); // Small delay so that the relay has time to stabilize
     // Read soil moisture
     int soilMoisture = readSoilMoistureSensor();
+    // Deactivate soil moisture sensor via relay
+    activateSoilMoistureSensor(false);
 
     // Print soil moisture reading
     Serial.print("Soil moisture: ");
@@ -235,7 +242,7 @@ int DeviceManager::readAndSendSoilMoisture(String boardId, String networkName) {
 
 // Function for checking soil moisture status and decision for starting watering sequence
 bool DeviceManager::checkSoilStatus(int soilMoisture) {
-    bool startWateringSequence = false; // Return variable, defaults to false
+    bool startWateringSequenceReturnValue = false; // Return variable, defaults to false
 
     // If statement for checking soil status
     if (soilMoisture < SOIL_WET) {
@@ -247,17 +254,17 @@ bool DeviceManager::checkSoilStatus(int soilMoisture) {
     } else {
         Serial.println(SEND_SOIL_MOISTURE_STATUS_DRY_MESSAGE);
         handleEvent(INFO, SEND_SOIL_MOISTURE_STATUS_DRY_MESSAGE, SOIL_MOISTURE_INFO);
-        startWateringSequence = true; // If soil is dry, start watering sequence
+        startWateringSequenceReturnValue = true; // If soil is dry, start watering sequence
     }
 
     // Return result
-    return startWateringSequence;
+    return startWateringSequenceReturnValue;
 }
 
 // Function for reading soil moisture sensor value
 int DeviceManager::readSoilMoistureSensor() {
     // Configure Multiplexer IC 74157 to select soil moisture sensor
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_1, LOW);
+    // CD74HC4051E_CONTROL_PIN_1 is connected to ground so it stays LOW
     digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_2, LOW);
     digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_3, HIGH);
     delay(10); // Short delay so that the sensor stabilizes
@@ -268,7 +275,7 @@ int DeviceManager::readSoilMoistureSensor() {
 // Function for reading photoresistor value
 int DeviceManager::readPhotoresistor() {
     // Configure Multiplexer IC 74157 to select photoresistor
-    digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_1, LOW);
+    // CD74HC4051E_CONTROL_PIN_1 is connected to ground so it stays LOW
     digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_2, HIGH);
     digitalWrite(DIGITAL_CD74HC4051E_CONTROL_PIN_3, LOW);
     delay(10); // Short delay so that the sensor stabilizes
@@ -280,6 +287,11 @@ int DeviceManager::readPhotoresistor() {
 // Function for activating water pump
 void DeviceManager::activateWaterPump(bool activate) {
     digitalWrite(DIGITAL_WATER_PUMP_PIN, activate ? HIGH : LOW);
+}
+
+// Function for activating soil moisture sensor
+void DeviceManager::activateSoilMoistureSensor(bool activate) {
+    digitalWrite(DIGITAL_SOIL_MOISTURE_SENSOR_PIN, activate ? HIGH : LOW);
 }
 
 // Function for sending latest watering time to firebase
@@ -317,7 +329,9 @@ void DeviceManager::loop() {
         readAndSendLuminosity(boardId, networkName);
         currentSoilMoisture = readAndSendSoilMoisture(boardId, networkName);
         currentWaterTankLevel = readAndSendWaterTankLevel(boardId, networkName);
-
+        startWateringSequence = checkSoilStatus(currentSoilMoisture);
+        Serial.println("Start watering sequence:");
+        Serial.println(startWateringSequence == 1 ? "true" : "false");
         // Reset the timer
         sensorReadingsDone = true;
         previousMillis = currentMillis; 
@@ -327,8 +341,9 @@ void DeviceManager::loop() {
     }
 
     // Check if sensor readings are done and soil status is dry
-    if (sensorReadingsDone && checkSoilStatus(currentSoilMoisture)) {
+    if (sensorReadingsDone && startWateringSequence) {
         sensorReadingsDone = false;
+        startWateringSequence = false;
         // Check if current water tank level is below minimum allowed level
         if (currentWaterTankLevel <= MINIMUM_WATER_TANK_LEVEL) {
             Serial.println("Activating water pump.");

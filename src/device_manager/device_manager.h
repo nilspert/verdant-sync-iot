@@ -75,17 +75,20 @@ private:
     // Activate or deactivate the water pump
     void activateWaterPump(bool activate);
 
+    // Activate or deactivate soil moisture sensor
+    void activateSoilMoistureSensor(bool activate);
+
     // Constants and Configuration Settings
     const int SERIAL_BAUD_RATE = 115200;
     const int LOOP_DELAY = 30000;
     const int WATERING_SEQUENCE = 5000;
     const int ANALOG_OUTPUT_PIN = A0;
     const int DIGITAL_WATER_PUMP_PIN = 16;
-    const int DIGITAL_CD74HC4051E_CONTROL_PIN_1 = 14;
     const int DIGITAL_CD74HC4051E_CONTROL_PIN_2 = 12;
     const int DIGITAL_CD74HC4051E_CONTROL_PIN_3 = 13;
     const int DIGITAL_HC_SR04_TRIGGER_PIN = 0;
     const int DIGITAL_HC_SR04_ECHO_PIN = 15;
+    const int DIGITAL_SOIL_MOISTURE_SENSOR_PIN = 14;
     const int I2C_D1 = 5;
     const int I2C_D2 = 4;
     const int SOIL_WET = 500;
