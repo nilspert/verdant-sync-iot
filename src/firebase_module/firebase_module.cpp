@@ -32,7 +32,6 @@ bool checkDeviceStatus(const String& boardId) {
     if (Firebase.getBool(firebaseData, nodePath)) {
         bool isAuthorized = firebaseData.to<bool>();
         if (isAuthorized) {
-            Serial.println("Device is authorized.");
             return true; // Device is authorized
         }
     }
@@ -44,4 +43,3 @@ bool checkDeviceStatus(const String& boardId) {
 bool isDeviceAuthorized(const String& boardId) {
     return checkDeviceStatus(boardId);
 }
-

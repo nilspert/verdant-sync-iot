@@ -44,10 +44,23 @@ private:
     // Activate or deactivate soil moisture sensor
     void activateSoilMoistureSensor(bool activate);
 
+    // Wrapper function for all the rest sensor readings
+    void handleSensorReadings(unsigned long currentMillis);
+
+    // Wrapper function for handling soil moisture sensor reading
+    void handleSoilMoistureReading(unsigned long currentMillis);
+
+    // Wrapper function for handling watering sequence
+    void handleWateringSequence(unsigned long currentMillis);
+
+    // Wrapper function for handling water pump deactivation
+    void handleWaterPumpDeactivation();
+
     // Constants and Configuration Settings
     const int SERIAL_BAUD_RATE = 115200;
-    const int LOOP_DELAY = 30000;
-    const int WATERING_SEQUENCE = 5000;
+    const unsigned long SOIL_MOISTURE_INTERVAL = 12L * 60L * 1000L; // 12 minutes
+    const unsigned long SENSOR_INTERVAL = 30L * 1000L; // 30 seconds
+    const int WATERING_SEQUENCE = 8000;
     const int ANALOG_OUTPUT_PIN = A0;
     const int DIGITAL_WATER_PUMP_PIN = 16;
     const int DIGITAL_CD74HC4051E_CONTROL_PIN_2 = 12;

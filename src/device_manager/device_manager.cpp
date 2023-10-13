@@ -24,7 +24,8 @@ String boardId = "";
 String networkName = "";
 
 // Operation time tracking variables
-unsigned long previousMillis = 0;
+unsigned long previousSensorMillis = 0;
+unsigned long previousSoilMoistureMillis = 0;
 unsigned long waterPumpActivatedMillis = 0;
 
 // Flags and initial sensor values
@@ -55,6 +56,8 @@ void DeviceManager::setup() {
     // Check and register device if not added to Firebase
     if (!isDeviceAuthorized(boardId)) {
         registerDeviceForAuthorization(boardId);
+    } else {
+        Serial.println("Device is authorized.");
     }
 }
 
@@ -144,59 +147,87 @@ void DeviceManager::sendWaterTankRefillNotification(String boardId, String netwo
     }
 }
 
+// Function that wraps all sensor read related logic
+void DeviceManager::handleSensorReadings(unsigned long currentMillis) {
+    // Read and send sensor data
+    sensorManager.readAndSendTemperature(boardId, networkName);
+    sensorManager.readAndSendHumidity(boardId, networkName);
+    sensorManager.readAndSendAirPressure(boardId, networkName);
+    sensorManager.readAndSendLuminosity(boardId, networkName);
+    currentWaterTankLevel = sensorManager.readAndSendWaterTankLevel(boardId, networkName);
+
+    // Reset the timer
+    previousSensorMillis = currentMillis; 
+}
+
+// Function that handles soil moisture reading related logic
+void DeviceManager::handleSoilMoistureReading(unsigned long currentMillis) {
+    // Activate soil moisture sensor via relay
+    activateSoilMoistureSensor(true);
+    delay(1000);
+    currentSoilMoisture = sensorManager.readAndSendSoilMoisture(boardId, networkName);
+    delay(100);
+    // Deactivate soil moisture sensor via relay
+    activateSoilMoistureSensor(false);
+
+    startWateringSequence = checkSoilStatus(currentSoilMoisture);
+    Serial.println("Start watering sequence:");
+    Serial.println(startWateringSequence == 1 ? "true" : "false");
+    sensorReadingsDone = true;
+    // Reset the timer for the next soil moisture reading
+    previousSoilMoistureMillis = currentMillis;
+}
+
+void DeviceManager::handleWateringSequence(unsigned long currentMillis) {
+    sensorReadingsDone = false;
+    startWateringSequence = false;
+    // Check if current water tank level is below minimum allowed level
+    if (currentWaterTankLevel <= MINIMUM_WATER_TANK_LEVEL) {
+        Serial.println("Activating water pump.");
+        // Activate water pump via relay
+        activateWaterPump(true);
+        waterPumpActivatedMillis = currentMillis;
+        waterPumpActivated = true;
+    } else {
+        // Send notification if water tank level is too low
+        Serial.println("Water tank level is too low, please refill.");
+        sendWaterTankRefillNotification(boardId, networkName);
+    }
+}
+
+void DeviceManager::handleWaterPumpDeactivation() {
+    Serial.println("Stop water pump!");
+    waterPumpActivated = false;
+    // Deactivate water pump via relay
+    activateWaterPump(false);
+    sendLatestWateringTime(boardId, networkName);
+}
+
 // Main loop function for DeviceManager
 void DeviceManager::loop() {
     unsigned long currentMillis = millis(); // Current time in milliseconds since device started
 
-    // If device is authorized and LOOP_DELAY has passed, do sensor readings and data sending to firebase
-    if ((currentMillis - previousMillis >= LOOP_DELAY) && isDeviceAuthorized(boardId)) {       
-        // Read and send sensor data
-        sensorManager.readAndSendTemperature(boardId, networkName);
-        sensorManager.readAndSendHumidity(boardId, networkName);
-        sensorManager.readAndSendAirPressure(boardId, networkName);
-        sensorManager.readAndSendLuminosity(boardId, networkName);
-        currentWaterTankLevel = sensorManager.readAndSendWaterTankLevel(boardId, networkName);
-        // Activate soil moisture sensor via relay
-        activateSoilMoistureSensor(true);
-        currentSoilMoisture = sensorManager.readAndSendSoilMoisture(boardId, networkName);
-        // Deactivate soil moisture sensor via relay
-        activateSoilMoistureSensor(false);
-
-        startWateringSequence = checkSoilStatus(currentSoilMoisture);
-        Serial.println("Start watering sequence:");
-        Serial.println(startWateringSequence == 1 ? "true" : "false");
-        // Reset the timer
-        sensorReadingsDone = true;
-        previousMillis = currentMillis; 
+    // Check if its time to read sensors (every 30 seconds)
+    if ((currentMillis - previousSensorMillis >= SENSOR_INTERVAL) && isDeviceAuthorized(boardId)) {       
+        handleSensorReadings(currentMillis);
     } else {
         // Process created events
         eventModule.loop();
     }
 
+    // Check if its time to read soil moisture (every 12 minutes)
+    if ((currentMillis - previousSoilMoistureMillis >= SOIL_MOISTURE_INTERVAL) && isDeviceAuthorized(boardId)) {
+        // If the soil moisture interval has passed, read soil moisture
+        handleSoilMoistureReading(currentMillis);
+    }
+
     // Check if sensor readings are done and soil status is dry
     if (sensorReadingsDone && startWateringSequence) {
-        sensorReadingsDone = false;
-        startWateringSequence = false;
-        // Check if current water tank level is below minimum allowed level
-        if (currentWaterTankLevel <= MINIMUM_WATER_TANK_LEVEL) {
-            Serial.println("Activating water pump.");
-            // Activate water pump via relay
-            activateWaterPump(true);
-            waterPumpActivatedMillis = currentMillis;
-            waterPumpActivated = true;
-        } else {
-            // Send notification if water tank level is too low
-            Serial.println("Water tank level is too low, please refill.");
-            sendWaterTankRefillNotification(boardId, networkName);
-        }
+        handleWateringSequence(currentMillis);
     }
 
     // Check if the water pump has been activated and stop it after the watering sequence
     if (waterPumpActivated && (currentMillis - waterPumpActivatedMillis >= WATERING_SEQUENCE)) {
-        Serial.println("Stop!");
-        waterPumpActivated = false;
-        // Deactivate water pump via relay
-        activateWaterPump(false);
-        sendLatestWateringTime(boardId, networkName);
+        handleWaterPumpDeactivation();
     }
 }
