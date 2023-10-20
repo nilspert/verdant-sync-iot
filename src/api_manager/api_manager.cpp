@@ -9,8 +9,8 @@
 #include "api_manager.h"
 #include "../globals/globals.h"
 
-// Function to set up API call for board and history data
-bool ApiManager::setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey) {
+// Function to set up API call for device and history data
+bool ApiManager::setupApiCallWithHistoryData(const String& deviceId, const String& networkName, FirebaseJson json, const String& nodePathKey) {
     char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted WiFi SSID
     byte temp_enc_iv[N_BLOCK]; // Create array to store temporary initialization vector
 
@@ -18,10 +18,10 @@ bool ApiManager::setupApiCallWithHistoryData(const String& boardId, const String
     encryptAndConvertToHex(networkName.c_str(), encryptedWifiSSID, temp_enc_iv); // Encrypt network name and convert to hex
     String encryptedWifiSSIDString(encryptedWifiSSID); // Create String object to hold the encrypted WiFi SSID data
 
-    String nodePath = "boards/" + boardId; // Define board node path
+    String nodePath = "devices/" + deviceId; // Define device node path
     if (handleApiCall(json, nodePath)) {
         // Create a history node path and make another API call to store data to history
-        String historyNodePath = "history/" + nodePathKey + "/" + getFormattedDate() + encryptedWifiSSIDString + "/" + boardId + "/" + getCurrentTimeAsString();
+        String historyNodePath = "history/" + nodePathKey + "/" + getFormattedDate() + encryptedWifiSSIDString + "/" + deviceId + "/" + getCurrentTimeAsString();
         // Call handleApiCall function and return its result
         return handleApiCall(json, historyNodePath);
     } else {
@@ -40,58 +40,58 @@ bool ApiManager::handleApiCall(FirebaseJson json, const String& nodePath) {
 }
 
 // Function to handle device registration related data to firebase
-bool ApiManager::encryptAndSendDeviceRegistration(const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendDeviceRegistration(const String& deviceId, const String& networkName) {
     char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted WiFi SSID
-    char encryptedBoardId[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted boardId
-    char encryptedBoardName[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted board name
+    char encryptedDeviceId[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted deviceId
+    char encryptedDeviceName[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted device name
     
     encryptAndConvertToHex(networkName.c_str(), encryptedWifiSSID, enc_ivs[5]); // Encrypt network name and convert to hex
-    encryptAndConvertToHex(boardId.c_str(), encryptedBoardId, enc_ivs[6]); // Encrypt boardId and convert to hex
-    encryptAndConvertToHex(BOARD_NAME, encryptedBoardName, enc_ivs[7]); // Encrypt board name and convert to hex
+    encryptAndConvertToHex(deviceId.c_str(), encryptedDeviceId, enc_ivs[6]); // Encrypt deviceId and convert to hex
+    encryptAndConvertToHex(DEVICE_NAME, encryptedDeviceName, enc_ivs[7]); // Encrypt device name and convert to hex
 
     FirebaseJson json; // Create FirebaseJson object to store JSON payload
     // Set device registration related fields to JSON payload with encrypted data
-    json.set(boardId + "/authorized", false);
-    json.set(boardId + "/ssid", encryptedWifiSSID);
-    json.set(boardId + "/macAddress", encryptedBoardId);
-    json.set(boardId + "/name", encryptedBoardName);
+    json.set("/authorized", false);
+    json.set("/ssid", encryptedWifiSSID);
+    json.set("/macAddress", encryptedDeviceId);
+    json.set("/name", encryptedDeviceName);
 
     // Define node path
-    String nodePath = "authorized_devices/" + boardId + "/authorized";
+    String nodePath = "authorized_devices/" + deviceId;
 
     // call handleApiCall data function and return its result
     return handleApiCall(json, nodePath);
 }
 
-// Function to send board info related data to firebase
-bool ApiManager::encryptAndSendBoardInfo(const String& boardId, const String& networkName, const String& localIp) {
+// Function to send device info related data to firebase
+bool ApiManager::encryptAndSendDeviceInfo(const String& deviceId, const String& networkName, const String& localIp) {
     char encryptedFirmwareVersion[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted firmware version
-    char encryptedBoardName[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted board name
+    char encryptedDeviceName[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted device name
     char encryptedIpAddress[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted ip address
     char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted WiFi SSID
-    char encryptedBoardId[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted boardId
+    char encryptedDeviceId[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted deviceId
 
     encryptAndConvertToHex(FIRMWARE_VERSION, encryptedFirmwareVersion, enc_ivs[0]); // Encrypt firmware version and convert to hex
-    encryptAndConvertToHex(BOARD_NAME, encryptedBoardName, enc_ivs[1]); // Encrypt board name and convert to hex
+    encryptAndConvertToHex(DEVICE_NAME, encryptedDeviceName, enc_ivs[1]); // Encrypt device name and convert to hex
     encryptAndConvertToHex(localIp.c_str(), encryptedIpAddress, enc_ivs[2]); // Encrypt ip address and convert to hex
     encryptAndConvertToHex(networkName.c_str(), encryptedWifiSSID, enc_ivs[3]); // Encrypt network name and convert to hex
-    encryptAndConvertToHex(boardId.c_str(), encryptedBoardId, enc_ivs[4]); // Encrypt boardId and convert to hex
+    encryptAndConvertToHex(deviceId.c_str(), encryptedDeviceId, enc_ivs[4]); // Encrypt deviceId and convert to hex
 
     FirebaseJson json; // Create FirebaseJson object to store JSON payload
-    // Set board info related fields to JSON payload with encrypted data
-    json.set("name", encryptedBoardName);
+    // Set device info related fields to JSON payload with encrypted data
+    json.set("name", encryptedDeviceName);
     json.set("firmware", encryptedFirmwareVersion);
     json.set("ip", encryptedIpAddress);
     json.set("ssid", encryptedWifiSSID);
-    json.set("macAddress", encryptedBoardId);
+    json.set("macAddress", encryptedDeviceId);
     
     // Define node path and call handleApiCall function
-    String nodePath = "boards/" + boardId;
+    String nodePath = "devices/" + deviceId;
     return handleApiCall(json, nodePath); // Return result of handleApiCall
 }
 
 // Function to send temperature data to firebase
-bool ApiManager::encryptAndSendTemperature(float temperature, const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendTemperature(float temperature, const String& deviceId, const String& networkName) {
     char encryptedTemperature[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted temperature
     char buffer[20]; // Create a character array with a size of 20
     dtostrf(temperature, 6, 2, buffer); // Convert temperature value to string and store it in buffer
@@ -104,11 +104,11 @@ bool ApiManager::encryptAndSendTemperature(float temperature, const String& boar
     json.set(TEMPERATURE_KEY, encryptedTemperature); // Set temperature field to JSON payload with encrypted data
 
     // call setupApiCallWithHistory data function and return its result
-    return setupApiCallWithHistoryData(boardId, networkName, json, TEMPERATURE_KEY); 
+    return setupApiCallWithHistoryData(deviceId, networkName, json, TEMPERATURE_KEY); 
 }
 
 // Function to send humidity data to firebase
-bool ApiManager::encryptAndSendHumidity(float humidity, const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendHumidity(float humidity, const String& deviceId, const String& networkName) {
     char encryptedHumidity[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted humidity
     char buffer[20]; // Create a character array with a size of 20
     dtostrf(humidity, 6, 2, buffer); // Convert humidity value to string and store it in buffer
@@ -121,11 +121,11 @@ bool ApiManager::encryptAndSendHumidity(float humidity, const String& boardId, c
     json.set(HUMIDITY_KEY, encryptedHumidity); // Set humidity field to JSON payload with encrypted data
 
     // call setupApiCallWithHistory data function and return its result
-    return setupApiCallWithHistoryData(boardId, networkName, json, HUMIDITY_KEY);
+    return setupApiCallWithHistoryData(deviceId, networkName, json, HUMIDITY_KEY);
 }
 
 // Function to send air pressure data to firebase
-bool ApiManager::encryptAndSendAirPressure(float airPressure, const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendAirPressure(float airPressure, const String& deviceId, const String& networkName) {
     char encryptedAirPressure[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted air pressure
     char buffer[20]; // Create a character array with a size of 20
     dtostrf(airPressure, 6, 2, buffer); // Convert air pressure value to string and store it in buffer
@@ -138,10 +138,10 @@ bool ApiManager::encryptAndSendAirPressure(float airPressure, const String& boar
     json.set(AIR_PRESSURE_KEY, encryptedAirPressure);
 
     // call setupApiCallWithHistory data function and return its result
-    return setupApiCallWithHistoryData(boardId, networkName, json, AIR_PRESSURE_KEY);
+    return setupApiCallWithHistoryData(deviceId, networkName, json, AIR_PRESSURE_KEY);
 }
 
-bool ApiManager::encryptAndSendLuminosity(float luminosity, const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendLuminosity(float luminosity, const String& deviceId, const String& networkName) {
     char encryptedLuminosity[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted luminosity
     char buffer[20]; // Create a character array with a size of 20
     dtostrf(luminosity, 6, 2, buffer); // Convert luminosity value to string and store it in buffer
@@ -154,10 +154,10 @@ bool ApiManager::encryptAndSendLuminosity(float luminosity, const String& boardI
     json.set(LUMINOSITY_KEY, encryptedLuminosity); // Set luminosity field to JSON payload with encrypted data
 
     // call setupApiCallWithHistory data function and return its result
-    return setupApiCallWithHistoryData(boardId, networkName, json, LUMINOSITY_KEY);
+    return setupApiCallWithHistoryData(deviceId, networkName, json, LUMINOSITY_KEY);
 }
 
-bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& deviceId, const String& networkName) {
     char encryptedSoilMoisture[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted soil moisture
     char buffer[20]; // Create a character array with a size of 20
     dtostrf(soilMoisture, 6, 2, buffer); // Convert soilMoisture value to string and store it in buffer
@@ -170,10 +170,10 @@ bool ApiManager::encryptAndSendSoilMoisture(int soilMoisture, const String& boar
     json.set(SOIL_MOISTURE_KEY, encryptedSoilMoisture); // Set soil moisture field to JSON payload with encrypted data
 
     // call setupApiCallWithHistory data function and return its result
-    return setupApiCallWithHistoryData(boardId, networkName, json, SOIL_MOISTURE_KEY);
+    return setupApiCallWithHistoryData(deviceId, networkName, json, SOIL_MOISTURE_KEY);
 }
 
-bool ApiManager::encryptAndSendWaterTankLevel(float waterTankLevel, const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendWaterTankLevel(float waterTankLevel, const String& deviceId, const String& networkName) {
     char encryptedWaterTankLevel[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted luminosity
     char buffer[20]; // Create a character array with a size of 20
     dtostrf(waterTankLevel, 6, 2, buffer); // Convert water tank level value to string and store it in buffer
@@ -186,10 +186,10 @@ bool ApiManager::encryptAndSendWaterTankLevel(float waterTankLevel, const String
     json.set(WATER_TANK_LEVEL_KEY, encryptedWaterTankLevel); // Set water tank level field to JSON payload with encrypted data
 
     // call setupApiCallWithHistory data function and return its result
-    return setupApiCallWithHistoryData(boardId, networkName, json, WATER_TANK_LEVEL_KEY);
+    return setupApiCallWithHistoryData(deviceId, networkName, json, WATER_TANK_LEVEL_KEY);
 }
 
-bool ApiManager::encryptAndSendLatestWateringTime(const String& currentTime, const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendLatestWateringTime(const String& currentTime, const String& deviceId, const String& networkName) {
     char encryptedCurrentTime[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted current time
 
     byte temp_enc_iv[N_BLOCK]; // Create array to store temporary initialization vector
@@ -200,11 +200,11 @@ bool ApiManager::encryptAndSendLatestWateringTime(const String& currentTime, con
     json.set(LATEST_WATERING_TIME_KEY, encryptedCurrentTime); // Set latest watering time field to JSON payload with encrypted data
 
     // call setupApiCallWithHistory data function and return its result
-    return setupApiCallWithHistoryData(boardId, networkName, json, LATEST_WATERING_TIME_KEY);
+    return setupApiCallWithHistoryData(deviceId, networkName, json, LATEST_WATERING_TIME_KEY);
 }
 
 
-bool ApiManager::encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& boardId, const String& networkName) {
+bool ApiManager::encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& deviceId, const String& networkName) {
     char encryptedCurrentTime[INPUT_BUFFER_LIMIT] = {0};  // Create array to store encrypted current time
     char encryptedWifiSSID[INPUT_BUFFER_LIMIT] = {0};  // Create array to store encrypted WiFi SSID
     byte temp_enc_iv_1[N_BLOCK]; // Create array to store temporary initialization vector
@@ -220,7 +220,7 @@ bool ApiManager::encryptAndSendWaterTankRefillNotification(const String& current
     json.set("notification_read", false); // Set notification read field to JSON payload with encrypted data
 
     // Define node path
-    String nodePath = "notifications/" + getFormattedDate() + encryptedWifiSSIDString + "/" + boardId + "/" + getCurrentTimeAsString();
+    String nodePath = "notifications/" + getFormattedDate() + encryptedWifiSSIDString + "/" + deviceId + "/" + getCurrentTimeAsString();
 
     // call handleApiCall function and return check for its result
     if (handleApiCall(json, nodePath)) {

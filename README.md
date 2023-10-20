@@ -16,7 +16,7 @@ VerdantSync IoT is an IoT project that automates plant irrigation and monitoring
 Before getting started, make sure you have the following prerequisites installed:
 
 - [Arduino IDE](https://www.arduino.cc/en/software)
-- [ESP8266WiFi board package](https://github.com/esp8266/Arduino/blob/master/libraries/ESP8266WiFi/src/ESP8266WiFi.h)
+- [ESP8266WiFi device package](https://github.com/esp8266/Arduino/blob/master/libraries/ESP8266WiFi/src/ESP8266WiFi.h)
 - [AESLib library](https://github.com/suculent/thinx-aes-lib)
 - [FirebaseESP8266 library](https://github.com/mobizt/Firebase-ESP8266)
 - [BMP280 library](https://github.com/adafruit/Adafruit_BMP280_Library)
@@ -37,9 +37,9 @@ Follow these steps to set up the project:
 
 4. Modify the `config.h` file with your actual Firebase and Wi-Fi credentials.
 
-5. Upload the modified sketch to your ESP8266 board.
+5. Upload the modified sketch to your ESP8266 device.
 
-6. Monitor the serial output to observe the board information and sensor readings being sent to Firebase.
+6. Monitor the serial output to observe the device information and sensor readings being sent to Firebase.
 
 ## Usage
 

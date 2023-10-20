@@ -12,7 +12,7 @@
 #include <ESP8266WiFi.h>
 
 void wifiModuleInit(); // Initialize the WiFi module
-String getBoardId(); // Get the unique board identifier
+String getDeviceId(); // Get the unique device identifier
 String getNetworkName(); // Get the network name (SSID)
 String getLocalIpAsString(); // Get the local IP address as a string
 

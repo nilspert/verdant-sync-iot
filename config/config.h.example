@@ -9,8 +9,8 @@
 #define WIFI_SSID ""
 #define WIFI_PASSWORD ""
 
-// Board information
-#define BOARD_NAME ""
+// Device information
+#define DEVICE_NAME ""
 #define FIRMWARE_VERSION ""
 
 // Secret Keys for encryption

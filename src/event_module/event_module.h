@@ -19,7 +19,7 @@
 
 // Event types
 #define REGISTRATION "0x0"
-#define BOARD_INFO "0x1"
+#define DEVICE_INFO "0x1"
 #define TEMPERATURE "0x2"
 #define HUMIDITY "0x3"
 #define AIR_PRESSURE "0x4"
@@ -31,7 +31,7 @@
 #define WATER_TANK_REFILL_NOTIFICATION "0xA"
 
 // Event messages
-#define ADD_BOARD_INFO_ERROR_MESSAGE "Failed to add board information."
+#define ADD_DEVICE_INFO_ERROR_MESSAGE "Failed to add device information."
 #define ADD_AUTHORIZED_DEVICE_PENDING_MESSAGE "Device is pending authorization. Data sending disabled."
 #define ADD_AUTHORIZED_DEVICE_ERROR_MESSAGE "Failed to add device to authorized devices"
 #define SEND_TEMPERATURE_ERROR_MESSAGE "Failed to send temperature data."

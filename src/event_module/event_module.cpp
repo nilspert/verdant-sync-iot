@@ -109,7 +109,7 @@ void EventModule::sendEventToFirebase(const Event &event) {
     String encryptedWifiSSIDString(encryptedWifiSSID); // Create String object to hold the encrypted WiFi SSID data
 
     // Create nodepath and send data to firebase
-    String nodePath = "events/" + event.severity + "/" + getFormattedDate() + encryptedWifiSSIDString + "/" + getBoardId() + "/";
+    String nodePath = "events/" + event.severity + "/" + getFormattedDate() + encryptedWifiSSIDString + "/" + getDeviceId() + "/";
     if (sendFirebaseData(json, nodePath.c_str())) {
         Serial.println("Event data sent successfully.");
     } else {

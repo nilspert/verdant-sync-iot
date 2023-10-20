@@ -27,19 +27,18 @@ bool sendFirebaseData(FirebaseJson json, const char* nodePath) {
 }
 
 // Function for checking authorization status of the device
-bool checkDeviceStatus(const String& boardId) {
-    String nodePath = "authorized_devices/" + boardId + "/authorized";
+bool checkDeviceStatus(const String& deviceId) {
+    String nodePath = "authorized_devices/" + deviceId + "/authorized";
     if (Firebase.getBool(firebaseData, nodePath)) {
         bool isAuthorized = firebaseData.to<bool>();
         if (isAuthorized) {
             return true; // Device is authorized
         }
     }
-    Serial.println("Device is not added.");
-    return false; // Device is not added or not authorized
+    return false; // Device is not authorized
 }
 
-// Function for checking if a device is authorized based on its board ID
-bool isDeviceAuthorized(const String& boardId) {
-    return checkDeviceStatus(boardId);
+// Function for checking if a device is authorized based on its device ID
+bool isDeviceAuthorized(const String& deviceId) {
+    return checkDeviceStatus(deviceId);
 }

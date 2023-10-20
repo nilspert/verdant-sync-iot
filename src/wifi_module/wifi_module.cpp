@@ -20,8 +20,8 @@ void wifiModuleInit() {
     Serial.println("Connected to WiFi!");
 }
 
-// Function to get the unique identifier (MAC address) for the board
-String getBoardId() {
+// Function to get the unique identifier (MAC address) for the device
+String getDeviceId() {
     return WiFi.macAddress();
 }
 

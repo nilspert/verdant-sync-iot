@@ -17,16 +17,16 @@
 class ApiManager {
 public:
     // API operations
-    bool encryptAndSendDeviceRegistration(const String& boardId, const String& networkName);
-    bool encryptAndSendBoardInfo(const String& boardId, const String& networkName, const String& localIp);
-    bool encryptAndSendTemperature(float temperature, const String& boardId, const String& networkName);
-    bool encryptAndSendHumidity(float humidity, const String& boardId, const String& networkName);
-    bool encryptAndSendAirPressure(float airPressure, const String& boardId, const String& networkName);
-    bool encryptAndSendSoilMoisture(int soilMoisture, const String& boardId, const String& networkName);
-    bool encryptAndSendLuminosity(float luminosity, const String& boardId, const String& networkName);
-    bool encryptAndSendWaterTankLevel(float waterTankLevel, const String& boardId, const String& networkName);
-    bool encryptAndSendLatestWateringTime(const String& currentTime, const String& boardId, const String& networkName);
-    bool encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& boardId, const String& networkName);
+    bool encryptAndSendDeviceRegistration(const String& deviceId, const String& networkName);
+    bool encryptAndSendDeviceInfo(const String& deviceId, const String& networkName, const String& localIp);
+    bool encryptAndSendTemperature(float temperature, const String& deviceId, const String& networkName);
+    bool encryptAndSendHumidity(float humidity, const String& deviceId, const String& networkName);
+    bool encryptAndSendAirPressure(float airPressure, const String& deviceId, const String& networkName);
+    bool encryptAndSendSoilMoisture(int soilMoisture, const String& deviceId, const String& networkName);
+    bool encryptAndSendLuminosity(float luminosity, const String& deviceId, const String& networkName);
+    bool encryptAndSendWaterTankLevel(float waterTankLevel, const String& deviceId, const String& networkName);
+    bool encryptAndSendLatestWateringTime(const String& currentTime, const String& deviceId, const String& networkName);
+    bool encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& deviceId, const String& networkName);
 private: 
     // API node path keys
     const char* AIR_PRESSURE_KEY = "air_pressure";
@@ -39,7 +39,7 @@ private:
     const char* WATER_TANK_REFILL_NOTIFICATION_KEY = "refill_water_tank";
 
     // API setup functions
-    bool setupApiCallWithHistoryData(const String& boardId, const String& networkName, FirebaseJson json, const String& nodePathKey);
+    bool setupApiCallWithHistoryData(const String& deviceId, const String& networkName, FirebaseJson json, const String& nodePathKey);
     bool handleApiCall(FirebaseJson json, const String& nodePath);
 };
 

@@ -20,7 +20,7 @@ SensorManager sensorManager;
 ApiManager apiManager;
 
 // Device and network configuration
-String boardId = "";
+String deviceId = "";
 String networkName = "";
 
 // Operation time tracking variables
@@ -49,13 +49,13 @@ void DeviceManager::setup() {
 
     initModules(); // Initialize modules
 
-    // Set board related variables
-    boardId = getBoardId(); // Unique board identifier
+    // Set device related variables
+    deviceId = getDeviceId(); // Unique device identifier
     networkName = getNetworkName(); // WiFi SSID
 
     // Check and register device if not added to Firebase
-    if (!isDeviceAuthorized(boardId)) {
-        registerDeviceForAuthorization(boardId);
+    if (!isDeviceAuthorized(deviceId)) {
+        registerDeviceForAuthorization(deviceId);
     } else {
         Serial.println("Device is authorized.");
     }
@@ -71,19 +71,19 @@ void DeviceManager::initModules() {
 }
 
 // Function for registering device
-void DeviceManager::registerDeviceForAuthorization(String boardId) {
+void DeviceManager::registerDeviceForAuthorization(String deviceId) {
     String localIp = getLocalIpAsString();
 
     // Register device and send registration data
-    if (apiManager.encryptAndSendDeviceRegistration(boardId, networkName)) {
+    if (apiManager.encryptAndSendDeviceRegistration(deviceId, networkName)) {
         Serial.println("Device registered.");
 
-        // Send board info data
-        if (apiManager.encryptAndSendBoardInfo(boardId, networkName, localIp)) {
-            Serial.println("Board info sent.");
+        // Send device info data
+        if (apiManager.encryptAndSendDeviceInfo(deviceId, networkName, localIp)) {
+            Serial.println("Device info sent.");
         } else {
-            Serial.println("Failed to send board info.");
-            handleEvent(ERROR, ADD_BOARD_INFO_ERROR_MESSAGE, BOARD_INFO);
+            Serial.println("Failed to send device info.");
+            handleEvent(ERROR, ADD_DEVICE_INFO_ERROR_MESSAGE, DEVICE_INFO);
         }
     } else {
         Serial.println("Failed to register device.");
@@ -128,8 +128,8 @@ void DeviceManager::activateSoilMoistureSensor(bool activate) {
 }
 
 // Function for sending latest watering time to firebase
-void DeviceManager::sendLatestWateringTime(String boardId, String networkName) {
-    if (apiManager.encryptAndSendLatestWateringTime(getCurrentTimeAsString(), boardId, networkName)) {
+void DeviceManager::sendLatestWateringTime(String deviceId, String networkName) {
+    if (apiManager.encryptAndSendLatestWateringTime(getCurrentTimeAsString(), deviceId, networkName)) {
         Serial.println("Watering time sent successfully.");
     } else {
         Serial.println("Failed to send watering time.");
@@ -138,8 +138,8 @@ void DeviceManager::sendLatestWateringTime(String boardId, String networkName) {
 }
 
 // Function for sending water tank refill notification to firebase
-void DeviceManager::sendWaterTankRefillNotification(String boardId, String networkName) {
-    if (apiManager.encryptAndSendWaterTankRefillNotification(getCurrentTimeAsString(), boardId, networkName)) {
+void DeviceManager::sendWaterTankRefillNotification(String deviceId, String networkName) {
+    if (apiManager.encryptAndSendWaterTankRefillNotification(getCurrentTimeAsString(), deviceId, networkName)) {
         Serial.println("Water tank refill notification sent successfully.");
     } else {
         Serial.println("Failed to send water tank refill notification.");
@@ -150,11 +150,11 @@ void DeviceManager::sendWaterTankRefillNotification(String boardId, String netwo
 // Function that wraps all sensor read related logic
 void DeviceManager::handleSensorReadings(unsigned long currentMillis) {
     // Read and send sensor data
-    sensorManager.readAndSendTemperature(boardId, networkName);
-    sensorManager.readAndSendHumidity(boardId, networkName);
-    sensorManager.readAndSendAirPressure(boardId, networkName);
-    sensorManager.readAndSendLuminosity(boardId, networkName);
-    currentWaterTankLevel = sensorManager.readAndSendWaterTankLevel(boardId, networkName);
+    sensorManager.readAndSendTemperature(deviceId, networkName);
+    sensorManager.readAndSendHumidity(deviceId, networkName);
+    sensorManager.readAndSendAirPressure(deviceId, networkName);
+    sensorManager.readAndSendLuminosity(deviceId, networkName);
+    currentWaterTankLevel = sensorManager.readAndSendWaterTankLevel(deviceId, networkName);
 
     // Reset the timer
     previousSensorMillis = currentMillis; 
@@ -165,7 +165,7 @@ void DeviceManager::handleSoilMoistureReading(unsigned long currentMillis) {
     // Activate soil moisture sensor via relay
     activateSoilMoistureSensor(true);
     delay(1000);
-    currentSoilMoisture = sensorManager.readAndSendSoilMoisture(boardId, networkName);
+    currentSoilMoisture = sensorManager.readAndSendSoilMoisture(deviceId, networkName);
     delay(100);
     // Deactivate soil moisture sensor via relay
     activateSoilMoistureSensor(false);
@@ -191,7 +191,7 @@ void DeviceManager::handleWateringSequence(unsigned long currentMillis) {
     } else {
         // Send notification if water tank level is too low
         Serial.println("Water tank level is too low, please refill.");
-        sendWaterTankRefillNotification(boardId, networkName);
+        sendWaterTankRefillNotification(deviceId, networkName);
     }
 }
 
@@ -200,30 +200,30 @@ void DeviceManager::handleWaterPumpDeactivation() {
     waterPumpActivated = false;
     // Deactivate water pump via relay
     activateWaterPump(false);
-    sendLatestWateringTime(boardId, networkName);
+    sendLatestWateringTime(deviceId, networkName);
 }
 
 // Main loop function for DeviceManager
 void DeviceManager::loop() {
     unsigned long currentMillis = millis(); // Current time in milliseconds since device started
 
-    // Check if its time to read sensors (every 30 seconds)
-    if ((currentMillis - previousSensorMillis >= SENSOR_INTERVAL) && isDeviceAuthorized(boardId)) {       
-        handleSensorReadings(currentMillis);
-    } else {
-        // Process created events
-        eventModule.loop();
-    }
-
-    // Check if its time to read soil moisture (every 12 minutes)
-    if ((currentMillis - previousSoilMoistureMillis >= SOIL_MOISTURE_INTERVAL) && isDeviceAuthorized(boardId)) {
-        // If the soil moisture interval has passed, read soil moisture
-        handleSoilMoistureReading(currentMillis);
-    }
-
     // Check if sensor readings are done and soil status is dry
     if (sensorReadingsDone && startWateringSequence) {
         handleWateringSequence(currentMillis);
+    } else {
+        // Check if its time to read sensors (every 30 seconds)
+        if ((currentMillis - previousSensorMillis >= SENSOR_INTERVAL) && isDeviceAuthorized(deviceId)) {       
+            handleSensorReadings(currentMillis);
+        } else {
+            // Process created events
+            eventModule.loop();
+        }
+
+        // Check if its time to read soil moisture (every 12 minutes)
+        if ((currentMillis - previousSoilMoistureMillis >= SOIL_MOISTURE_INTERVAL) && isDeviceAuthorized(deviceId)) {
+            // If the soil moisture interval has passed, read soil moisture
+            handleSoilMoistureReading(currentMillis);
+        }
     }
 
     // Check if the water pump has been activated and stop it after the watering sequence

@@ -21,6 +21,6 @@ void firebaseModuleInit();
 bool sendFirebaseData(FirebaseJson json, const char* nodePath);
 
 // Function for checking device authorization
-bool isDeviceAuthorized(const String &boardId);
+bool isDeviceAuthorized(const String &deviceId);
 
 #endif

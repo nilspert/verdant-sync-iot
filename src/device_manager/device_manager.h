@@ -27,13 +27,13 @@ private:
     void initModules();
 
     // Register the device for authorization on Firebase
-    void registerDeviceForAuthorization(String boardId);
+    void registerDeviceForAuthorization(String deviceId);
 
     // Send the latest watering time to Firebase
-    void sendLatestWateringTime(String boardId, String networkName);
+    void sendLatestWateringTime(String deviceId, String networkName);
 
     // Send a water tank refill notification to Firebase
-    void sendWaterTankRefillNotification(String boardId, String networkName);
+    void sendWaterTankRefillNotification(String deviceId, String networkName);
 
     // Check soil moisture status and return boolean to check if watering is needed
     bool checkSoilStatus(int soilMoisture);
@@ -59,8 +59,8 @@ private:
     // Constants and Configuration Settings
     const int SERIAL_BAUD_RATE = 115200;
     const unsigned long SOIL_MOISTURE_INTERVAL = 12L * 60L * 60L * 1000L; // 12 hours
-    const unsigned long SENSOR_INTERVAL = 30L * 60L * 1000L; // 30 minutes
-    const int WATERING_SEQUENCE = 8000;
+    const unsigned long SENSOR_INTERVAL = 29L * 60L * 1000L; // 29 minutes
+    const int WATERING_SEQUENCE = 6000;
     const int ANALOG_OUTPUT_PIN = A0;
     const int DIGITAL_WATER_PUMP_PIN = 16;
     const int DIGITAL_CD74HC4051E_CONTROL_PIN_2 = 12;

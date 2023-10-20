@@ -29,7 +29,7 @@ void SensorManager::setup() {
 }
 
 // Function for reading and sending air pressure data to firebase
-void SensorManager::readAndSendAirPressure(String boardId, String networkName) {
+void SensorManager::readAndSendAirPressure(String deviceId, String networkName) {
     // Read air pressure from BMP280 and convert to hPa
     float airPressure = bmp.readPressure() / 100.0F;
 
@@ -39,7 +39,7 @@ void SensorManager::readAndSendAirPressure(String boardId, String networkName) {
     Serial.println(" hPa");
 
     // Send air pressure data to Firebase
-    if (apiManager.encryptAndSendAirPressure(airPressure, boardId, networkName)) {
+    if (apiManager.encryptAndSendAirPressure(airPressure, deviceId, networkName)) {
         Serial.println("Air pressure data sent successfully.");
     } else {
         Serial.println("Failed to send air pressure data.");
@@ -48,7 +48,7 @@ void SensorManager::readAndSendAirPressure(String boardId, String networkName) {
 }
 
 // Function for reading and sending temperature data to firebase
-void SensorManager::readAndSendTemperature(String boardId, String networkName) {
+void SensorManager::readAndSendTemperature(String deviceId, String networkName) {
     float temperature = dht.readTemperature(); // Read temperature from DHT22
 
     // Print temperature reading
@@ -57,7 +57,7 @@ void SensorManager::readAndSendTemperature(String boardId, String networkName) {
     Serial.println(" *C");
 
     // Send temperature data to Firebase
-    if (apiManager.encryptAndSendTemperature(temperature, boardId, networkName)) {
+    if (apiManager.encryptAndSendTemperature(temperature, deviceId, networkName)) {
         Serial.println("Temperature data sent successfully.");
     } else {
         Serial.println("Failed to send temperature data.");
@@ -66,7 +66,7 @@ void SensorManager::readAndSendTemperature(String boardId, String networkName) {
 }
 
 // Function for reading and sending humidity data to firebase
-void SensorManager::readAndSendHumidity(String boardId, String networkName) {
+void SensorManager::readAndSendHumidity(String deviceId, String networkName) {
     float humidity = dht.readHumidity(); // Read humidity from DHT22
 
     // Print humidity reading
@@ -75,7 +75,7 @@ void SensorManager::readAndSendHumidity(String boardId, String networkName) {
     Serial.println(" %");
 
     // Send humidity data to Firebase
-    if (apiManager.encryptAndSendHumidity(humidity, boardId, networkName)) {
+    if (apiManager.encryptAndSendHumidity(humidity, deviceId, networkName)) {
         Serial.println("Humidity data sent successfully.");
     } else {
         Serial.println("Failed to send humidity data.");
@@ -84,7 +84,7 @@ void SensorManager::readAndSendHumidity(String boardId, String networkName) {
 }
 
 // Function for reading and sending luminosity data to firebase
-void SensorManager::readAndSendLuminosity(String boardId, String networkName) {
+void SensorManager::readAndSendLuminosity(String deviceId, String networkName) {
     int luminosity = readPhotoresistor(); // Read luminosity from photoresistor
 
     // Print luminosity reading
@@ -93,7 +93,7 @@ void SensorManager::readAndSendLuminosity(String boardId, String networkName) {
     Serial.println(" %");
 
     // Send luminosity data to Firebase
-    if (apiManager.encryptAndSendLuminosity(luminosity, boardId, networkName)) {
+    if (apiManager.encryptAndSendLuminosity(luminosity, deviceId, networkName)) {
         Serial.println("Luminosity data sent successfully.");
     } else {
         Serial.println("Failed to send luminosity data.");
@@ -113,7 +113,7 @@ int SensorManager::readPhotoresistor() {
 }
 
 // Function for reading and sending soil moisture data to firebase
-int SensorManager::readAndSendSoilMoisture(String boardId, String networkName) {
+int SensorManager::readAndSendSoilMoisture(String deviceId, String networkName) {
     // Read soil moisture
     int soilMoisture = readSoilMoistureSensor();
 
@@ -123,7 +123,7 @@ int SensorManager::readAndSendSoilMoisture(String boardId, String networkName) {
     Serial.println(" %");
 
     // Send soil moisture data to firebase
-    if (apiManager.encryptAndSendSoilMoisture(soilMoisture, boardId, networkName)) {
+    if (apiManager.encryptAndSendSoilMoisture(soilMoisture, deviceId, networkName)) {
         Serial.println("Soil moisture data sent successfully.");
     } else {
         Serial.println("Failed to send soil moisture data.");
@@ -146,7 +146,7 @@ int SensorManager::readSoilMoistureSensor() {
 }
 
 // Function for reading and sending water tank level data to firebase
-float SensorManager::readAndSendWaterTankLevel(String boardId, String networkName) {
+float SensorManager::readAndSendWaterTankLevel(String deviceId, String networkName) {
     // Measure water tank level with HC_SR04P
     // 10 µs HIGH voltage starts echo pulse
     digitalWrite(DIGITAL_HC_SR04_TRIGGER_PIN, LOW);
@@ -174,7 +174,7 @@ float SensorManager::readAndSendWaterTankLevel(String boardId, String networkNam
     }
 
     // Send water tank level data to Firebase
-    if (apiManager.encryptAndSendWaterTankLevel(distance, boardId, networkName)) {
+    if (apiManager.encryptAndSendWaterTankLevel(distance, deviceId, networkName)) {
         Serial.println("Water tank level data sent successfully.");
     } else {
         Serial.println("Failed to send water tank level data.");
