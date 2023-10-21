@@ -53,7 +53,7 @@ The project has the following functionality:
 
 - The watering sequence begins when the soil moisture level drops below a set threshold (750 / 1024).
 - This activates a relay, which in turn controls the water pump to ensure the plant is watered.
-- Watering sequence lasts for five seconds. 
+- Watering sequence lasts for eight seconds. 
 
 ## License
 

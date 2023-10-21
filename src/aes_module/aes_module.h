@@ -13,7 +13,7 @@
 #include <AESLib.h>
 
 #define INPUT_BUFFER_LIMIT (128 + 1) // Max size of input data buffer for encryption
-#define NUM_IVS 23 // Number of IVs 
+#define NUM_IVS 24 // Number of IVs 
 
 // Array of IVs which can be used in other modules
 extern byte enc_ivs[NUM_IVS][N_BLOCK];

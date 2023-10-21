@@ -137,6 +137,16 @@ void DeviceManager::sendLatestWateringTime(String deviceId, String networkName) 
     }
 }
 
+// Function for sending latest sensor reading time to firebase
+void DeviceManager::sendLatestSensorReadingTime(String deviceId, String networkName) {
+    if (apiManager.encryptAndSendLatestSensorReadingTime(getCurrentTimeAsString(), deviceId, networkName)) {
+        Serial.println("Sensor reading time sent successfully.");
+    } else {
+        Serial.println("Failed to send sensor reading time.");
+        handleEvent(ERROR, SEND_LATEST_SENSOR_READING_TIME_ERROR_MESSAGE, LATEST_SENSOR_READING_TIME);
+    }
+}
+
 // Function for sending water tank refill notification to firebase
 void DeviceManager::sendWaterTankRefillNotification(String deviceId, String networkName) {
     if (apiManager.encryptAndSendWaterTankRefillNotification(getCurrentTimeAsString(), deviceId, networkName)) {
@@ -156,6 +166,7 @@ void DeviceManager::handleSensorReadings(unsigned long currentMillis) {
     sensorManager.readAndSendLuminosity(deviceId, networkName);
     currentWaterTankLevel = sensorManager.readAndSendWaterTankLevel(deviceId, networkName);
 
+    sendLatestSensorReadingTime(deviceId, networkName);
     // Reset the timer
     previousSensorMillis = currentMillis; 
 }

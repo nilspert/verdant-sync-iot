@@ -203,6 +203,19 @@ bool ApiManager::encryptAndSendLatestWateringTime(const String& currentTime, con
     return setupApiCallWithHistoryData(deviceId, networkName, json, LATEST_WATERING_TIME_KEY);
 }
 
+bool ApiManager::encryptAndSendLatestSensorReadingTime(const String& currentTime, const String& deviceId, const String& networkName) {
+    char encryptedCurrentTime[INPUT_BUFFER_LIMIT] = {0}; // Create array to store encrypted current time
+
+    byte temp_enc_iv[N_BLOCK]; // Create array to store temporary initialization vector
+    generateNewIV(temp_enc_iv, enc_ivs[23]);  // Generate a new IV for encryption
+    encryptAndConvertToHex(currentTime.c_str(), encryptedCurrentTime, temp_enc_iv); // Encrypt current time value and convert to hex
+
+    FirebaseJson json; // Create FirebaseJson object to store JSON payload
+    json.set(LATEST_SENSOR_READING_TIME_KEY, encryptedCurrentTime); // Set latest watering time field to JSON payload with encrypted data
+
+    // call setupApiCallWithHistory data function and return its result
+    return setupApiCallWithHistoryData(deviceId, networkName, json, LATEST_SENSOR_READING_TIME_KEY);
+}
 
 bool ApiManager::encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& deviceId, const String& networkName) {
     char encryptedCurrentTime[INPUT_BUFFER_LIMIT] = {0};  // Create array to store encrypted current time

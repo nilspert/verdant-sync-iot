@@ -29,6 +29,7 @@
 #define WATER_TANK_LEVEL "0x8"
 #define LATEST_WATERING_TIME "0x9"
 #define WATER_TANK_REFILL_NOTIFICATION "0xA"
+#define LATEST_SENSOR_READING_TIME "0xB"
 
 // Event messages
 #define ADD_DEVICE_INFO_ERROR_MESSAGE "Failed to add device information."
@@ -41,6 +42,7 @@
 #define SEND_LUMINOSITY_ERROR_MESSAGE "Failed to send luminosity data."
 #define SEND_WATER_TANK_LEVEL_ERROR_MESSAGE "Failed to send water tank level data."
 #define SEND_LATEST_WATERING_TIME_ERROR_MESSAGE "Failed to send latest watering time."
+#define SEND_LATEST_SENSOR_READING_TIME_ERROR_MESSAGE "Failed to send latest sensor reading time."
 #define SEND_WATER_TANK_REFILL_NOTIFICATION_ERROR_MESSAGE "Failed to send water tank refill notification."
 #define SEND_SOIL_MOISTURE_STATUS_WET_MESSAGE "Status: high soil moisture."
 #define SEND_SOIL_MOISTURE_STATUS_OPTIMAL_MESSAGE "Status: optimal soil moisture."

@@ -26,6 +26,7 @@ public:
     bool encryptAndSendLuminosity(float luminosity, const String& deviceId, const String& networkName);
     bool encryptAndSendWaterTankLevel(float waterTankLevel, const String& deviceId, const String& networkName);
     bool encryptAndSendLatestWateringTime(const String& currentTime, const String& deviceId, const String& networkName);
+    bool encryptAndSendLatestSensorReadingTime(const String& currentTime, const String& deviceId, const String& networkName);
     bool encryptAndSendWaterTankRefillNotification(const String& currentTime, const String& deviceId, const String& networkName);
 private: 
     // API node path keys
@@ -36,6 +37,7 @@ private:
     const char* TEMPERATURE_KEY = "temperature";
     const char* WATER_TANK_LEVEL_KEY = "water_tank_level";
     const char* LATEST_WATERING_TIME_KEY = "latest_watering_time";
+    const char* LATEST_SENSOR_READING_TIME_KEY = "latest_sensor_reading_time";
     const char* WATER_TANK_REFILL_NOTIFICATION_KEY = "refill_water_tank";
 
     // API setup functions
