@@ -1,13 +1,13 @@
 # VerdantSync IoT
 
-VerdantSync IoT is an IoT project that automates plant irrigation and monitoring. It uses an ESP8266 microcontroller to send sensor data to Firebase Realtime Database, ensuring efficient plant care and control.
+VerdantSync IoT is an IoT project that automates plant irrigation and monitoring. It uses an ESP8266 microcontroller to collect and send sensor data to Firebase Realtime Database.
 
 ## Features
 
-- **Sensor Data Logging**: Collects data from various sensors and logs it in Firebase.
+- **Sensor Data Logging**: Collects data from various sensors and sends it to Firebase Realtime Database.
 - **Data Encryption**: Encrypts data sent to Firebase using the AESLib library.
 - **Water Pump Control**: Manages a water pump connected to the ESP8266 microcontroller.
-- **Android Control App**: Control application can be found at this repository: [VerdantSync](https://github.com/nilspert/verdant-sync)
+- **Android Monitoring App**: Monitoring app can be found at this repository: [VerdantSync](https://github.com/nilspert/verdant-sync)
 
 ## Getting Started
 
@@ -24,6 +24,25 @@ Before getting started, make sure you have the following prerequisites installed
 - [NTPClient library](https://github.com/arduino-libraries/NTPClient)
 - [WiFiUdp library](https://github.com/esp8266/Arduino/blob/master/libraries/ESP8266WiFi/src/WiFiUdp.h)
 - [Time library](https://github.com/PaulStoffregen/Time)
+
+### Wiring Diagram
+
+Wiring diagram for the IoT measurement device can be found in [schematics](schematics/VerdantSync_IoT_wiring_diagram.png) folder.
+
+### Components used in IoT Measurement Device
+
+- [KS0367 Keyestudio ESP8266](https://wiki.keyestudio.com/KS0367_keyestudio_ESP8266_WiFi_Board) Wi-Fi Development Board
+- Generic Water Pump - Transfers water to the plant from water tank 
+- Generic Photoresistor - Reads luminosity
+- DHT22 Sensor - Reads air temperature and humidity
+- BMP280 Sensor - Reads air pressure
+- HC-SR04P Sensor -  Reads water tank level
+- YL-69 Sensor - Reads soil moisture
+- 3.3V 1 Channel Relay Module x2 - Controls YL-69 and water pump
+- CD74HC4051E Multiplexer - used to get readings from YL-69 and photoresistor
+- Capacitors 101 C x2
+- Resistors (12k x2, 1k x1)
+- Diode 1N4001 x3
 
 ### Setup
 
@@ -45,15 +64,15 @@ Follow these steps to set up the project:
 
 The project has the following functionality:
 
-- **Sensor Data Reading**: Reads and logs temperature, humidity, air pressure, luminosity, and soil moisture using various sensors.
+- **Sensor Data Reading**: Reads temperature, humidity, air pressure, luminosity, and soil moisture using various sensors.
 
 - **Water Pump Control**: Controls a 3.3V water pump based on soil moisture levels.
 
 ### Watering Sequence
 
 - The watering sequence begins when the soil moisture level drops below a set threshold (750 / 1024).
-- This activates a relay, which in turn controls the water pump to ensure the plant is watered.
-- Watering sequence lasts for eight seconds. 
+- This activates a relay, which in turn controls the water pump.
+- Watering sequence lasts for twelve seconds. 
 
 ## License
 

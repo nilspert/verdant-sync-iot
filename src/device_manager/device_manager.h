@@ -63,7 +63,7 @@ private:
     const int SERIAL_BAUD_RATE = 115200;
     const unsigned long SOIL_MOISTURE_INTERVAL = 12L * 60L * 60L * 1000L; // 12 hours
     const unsigned long SENSOR_INTERVAL = 29L * 60L * 1000L; // 29 minutes
-    const int WATERING_SEQUENCE = 8000;
+    const int WATERING_SEQUENCE = 12000;
     const int ANALOG_OUTPUT_PIN = A0;
     const int DIGITAL_WATER_PUMP_PIN = 16;
     const int DIGITAL_CD74HC4051E_CONTROL_PIN_2 = 12;
