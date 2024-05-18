@@ -172,7 +172,7 @@ void DeviceManager::handleSensorReadings(unsigned long currentMillis) {
 }
 
 // Function that handles soil moisture reading related logic
-void DeviceManager::handleSoilMoistureReading(unsigned long currentMillis) {
+void DeviceManager::handleSoilMoistureReading(unsigned long currentMillis, bool checkWatering) {
     // Activate soil moisture sensor via relay
     activateSoilMoistureSensor(true);
     delay(1000);
@@ -181,6 +181,12 @@ void DeviceManager::handleSoilMoistureReading(unsigned long currentMillis) {
     // Deactivate soil moisture sensor via relay
     activateSoilMoistureSensor(false);
 
+    if (checkWatering) {
+        checkIfWateringIsNeeded(currentMillis);
+    }
+}
+
+void DeviceManager::checkIfWateringIsNeeded(unsigned long currentMillis) {
     startWateringSequence = checkSoilStatus(currentSoilMoisture);
     Serial.println("Start watering sequence:");
     Serial.println(startWateringSequence == 1 ? "true" : "false");
@@ -206,12 +212,14 @@ void DeviceManager::handleWateringSequence(unsigned long currentMillis) {
     }
 }
 
-void DeviceManager::handleWaterPumpDeactivation() {
+void DeviceManager::handleWaterPumpDeactivation(unsigned long currentMillis) {
     Serial.println("Stop water pump!");
     waterPumpActivated = false;
     // Deactivate water pump via relay
     activateWaterPump(false);
     sendLatestWateringTime(deviceId, networkName);
+    // Read soil moisture after watering to get the latest readings in app
+    handleSoilMoistureReading(currentMillis, false);
 }
 
 // Main loop function for DeviceManager
@@ -233,12 +241,12 @@ void DeviceManager::loop() {
         // Check if its time to read soil moisture (every 12 minutes)
         if ((currentMillis - previousSoilMoistureMillis >= SOIL_MOISTURE_INTERVAL) && isDeviceAuthorized(deviceId)) {
             // If the soil moisture interval has passed, read soil moisture
-            handleSoilMoistureReading(currentMillis);
+            handleSoilMoistureReading(currentMillis, true);
         }
     }
 
     // Check if the water pump has been activated and stop it after the watering sequence
     if (waterPumpActivated && (currentMillis - waterPumpActivatedMillis >= WATERING_SEQUENCE)) {
-        handleWaterPumpDeactivation();
+        handleWaterPumpDeactivation(currentMillis);
     }
 }

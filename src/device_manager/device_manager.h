@@ -51,17 +51,20 @@ private:
     void handleSensorReadings(unsigned long currentMillis);
 
     // Wrapper function for handling soil moisture sensor reading
-    void handleSoilMoistureReading(unsigned long currentMillis);
+    void handleSoilMoistureReading(unsigned long currentMillis, bool checkWatering);
+
+    // Wrapper function for checking if watering is needed
+    void checkIfWateringIsNeeded(unsigned long currentMillis);
 
     // Wrapper function for handling watering sequence
     void handleWateringSequence(unsigned long currentMillis);
 
     // Wrapper function for handling water pump deactivation
-    void handleWaterPumpDeactivation();
+    void handleWaterPumpDeactivation(unsigned long currentMillis);
 
     // Constants and Configuration Settings
     const int SERIAL_BAUD_RATE = 115200;
-    const unsigned long SOIL_MOISTURE_INTERVAL = 12L * 60L * 60L * 1000L; // 12 hours
+    const unsigned long SOIL_MOISTURE_INTERVAL = 24L * 60L * 60L * 1000L; // 24 hours
     const unsigned long SENSOR_INTERVAL = 29L * 60L * 1000L; // 29 minutes
     const int WATERING_SEQUENCE = 12000;
     const int ANALOG_OUTPUT_PIN = A0;
